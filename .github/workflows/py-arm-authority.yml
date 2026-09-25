@@ -1,0 +1,117 @@
+---
+name: py arm authority
+
+# tests/py_arm_authority_test.py's `_AUTHORITY` says, per Python arm,
+# which test module built on third-party vectors reaches it. Its own tests
+# check the table's shape against the source and against itself, and none
+# of them re-runs the coverage that produced its values, because that
+# measurement is minutes and not seconds: every module
+# `_THIRD_PARTY_VECTORS` names, each under coverage, each in an
+# environment with no bindings installed.
+#
+# `.github/scripts/check_py_arm_authority.py` does the comparing: it
+# imports `_AUTHORITY` from the test module rather than parsing a second
+# copy of it, runs each `_THIRD_PARTY_VECTORS` module under coverage on
+# its own, and diffs what it measures against what the table claims -- an
+# entry citing a module whose run no longer reaches the arm, a module
+# reaching an arm its entry does not name, and something newly reaching an
+# arm `_WITHOUT_AN_AUTHORITY` says nothing reaches. It exits non-zero on
+# any of the three, which is what makes this job red.
+#
+# `issues: write` on the job below, as `vendored-vectors.yml` takes it:
+# the table's values are read by nothing else in the tree, so a failed run
+# notifying once and then sitting in the Actions tab is not enough. The
+# script opens or updates an issue beside the red run, and closes it once
+# a measurement agrees again.
+
+on:
+  # a merge creates a commit no pull request measured, and what reaches an
+  # arm changes above it: an arm is any function calling
+  # `_libsecp256k1_serves`, and a module with no arm of its own can start
+  # or stop reaching one. No `paths` filter here, where the pull_request
+  # trigger has one: the surface a run reads is every module
+  # `_THIRD_PARTY_VECTORS` names plus every arm's own module, so a filter
+  # naming it honestly would be most of the package and most of the suite
+  push:
+    branches: [main]
+  schedule:
+    # section 10's calendar in btclib-org/.github, and not this file's to
+    # restate. Only the default branch schedules workflows, so on any
+    # other branch this is reachable through the dispatch below, and
+    # through the pull_request trigger further down
+    - cron: "48 4 * * 4"
+  workflow_dispatch:
+  pull_request:
+    # ready_for_review and closed for the reason vendored-vectors.yml's
+    # own trigger gives
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+    paths:
+      - .github/workflows/py-arm-authority.yml
+      - .github/scripts/check_py_arm_authority.py
+      - tests/py_arm_authority_test.py
+
+permissions:
+  contents: read
+
+# github.event.pull_request.number, not github.head_ref, for the reason
+# vendored-vectors.yml's own concurrency block gives
+concurrency:
+  group: py-arm-authority-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authority:
+    name: Re-derive the py-arm authority table
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # the elevation, on the job that needs it: the workflow-level
+    # contents: read stays, so a job added here later starts read-only
+    permissions:
+      contents: read
+      issues: write # gh issue create/edit/close, in the last step below
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          python-version: "3.15"
+
+      # test.yml's `no-bindings` job's own step: a run that silently kept
+      # the bindings would measure the delegated path and not the Python
+      # one. The script's `measure()` refuses the same condition for a
+      # caller reaching it by another route; this step is what fails the
+      # job by name before anything is measured
+      - name: Assert the bindings are absent
+        run: >
+          uv run --locked --no-default-groups --group harness
+          python -c "from ellipticcurves._libsecp256k1 import INSTALLED;
+          assert not INSTALLED, 'btclib_secp256k1 is installed';
+          from ellipticcurves.curves import is_libsecp256k1_serving;
+          assert not is_libsecp256k1_serving()"
+
+      # --dry-run on the pull_request trigger only: a fork's read-only
+      # token could not write the issue anyway, and a pull request testing
+      # a change to this file, the script or the table should not edit or
+      # close the tracking issue as a side effect. The flag reaches the
+      # shell through the environment rather than through a `${{ }}` in
+      # the script. The title is written here, beside the trigger and the
+      # permission that let this run file it
+      - name: Re-derive the authority table against a fresh measurement
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
+        run: |
+          args=()
+          if [ -n "$DRY_RUN" ]; then
+            args=(--dry-run)
+          fi
+          uv run --locked --no-default-groups --group harness \
+            python .github/scripts/check_py_arm_authority.py \
+            "Python arm authority table disagrees with a fresh measurement" \
+            "${args[@]}"

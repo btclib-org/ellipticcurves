@@ -1,0 +1,33 @@
+# MuSig2, mutated: BIP327's key aggregation, nonce aggregation and
+# partial signatures. A wrong answer here is not a wrong signature but a
+# lost key -- nonce reuse across sessions, a tweak applied twice, a
+# partial signature verified against the wrong aggregate nonce -- and the
+# reference vectors are the whole of what says otherwise.
+#
+# The survivors of this module were weighed on btclib-org/btclib's copy
+# of it, in its own `.github/mutation/musig2.toml`. This tree's
+# scheduled run and its `musig2-survivors.txt` artifact are where the
+# next weighing reads from.
+
+[cosmic-ray]
+module-path = "src/ellipticcurves/ecc/musig2.py"
+
+# the module's own file
+test-command = """python -m pytest -x -q -n0 -p no:randomly \
+  tests/ecc/musig2_test.py"""
+
+# seconds of wall clock: a timeout is reported KILLED, so slack is the
+# safe direction
+timeout = 300
+
+excluded-modules = []
+
+# every `|` in the module is in an annotation, whose mutants are
+# equivalent under deferred annotation evaluation (PEP 649):
+#
+#   grep -n ' | ' src/ellipticcurves/ecc/musig2.py
+[cosmic-ray.filters.operators-filter]
+exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
+
+[cosmic-ray.distributor]
+name = "local"

@@ -1,0 +1,289 @@
+# Copyright (c) The btclib developers
+# Distributed under the MIT software license, see the accompanying
+# LICENSE file or https://opensource.org/license/mit for the full text.
+
+"""Tests for the `ellipticcurves._utils` module."""
+
+import array
+import random
+from io import BytesIO
+
+import pytest
+
+from ellipticcurves._utils import (
+    assert_no_trailing,
+    bytes_from_octets,
+    hex_string,
+    int_from_bits,
+    int_from_integer,
+    is_octets,
+    read_exactly,
+    str_from_string,
+)
+from ellipticcurves.exceptions import EllipticCurvesTypeError, EllipticCurvesValueError
+from ellipticcurves.hashes import reduce_to_hlen
+
+random.seed(42)
+
+
+def test_read_exactly() -> None:
+    """The size asked for is the size returned, or it is an error."""
+    stream = BytesIO(b"12345")
+    assert read_exactly(stream, 2, "first field") == b"12"
+    assert read_exactly(stream, 3, "second field") == b"345"
+    # nothing left, and asking for nothing is not asking
+    assert read_exactly(stream, 0, "no field") == b""
+
+
+def test_read_exactly_names_the_field_it_could_not_fill() -> None:
+    """A short read is refused, and the message says which field it was.
+
+    BytesIO.read hands back what is left rather than raising, so an
+    unchecked read is not a missing check but a wrong value: the field
+    would be as long as the buffer happened to be.
+    """
+    err_msg = "not enough data for the sequence: 3 bytes instead of 4"
+    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        read_exactly(BytesIO(b"123"), 4, "sequence")
+
+    err_msg = "not enough data for the tx_id: 0 bytes instead of 32"
+    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        read_exactly(BytesIO(b""), 32, "tx_id")
+
+
+def test_assert_no_trailing() -> None:
+    """Octets are one whole object; a caller's stream is the caller's."""
+    # what a parser hands over: the argument as it came, and the stream
+    # it made of it, read up to the end of the object
+    consumed = BytesIO(b"12")
+    consumed.read(2)
+    assert_no_trailing(b"12", consumed, "thing")
+
+    consumed = BytesIO(b"12")
+    consumed.read(2)
+    assert_no_trailing("3132", consumed, "thing")
+
+    stream = BytesIO(b"12junk")
+    stream.read(2)
+    with pytest.raises(EllipticCurvesValueError, match="4 bytes after the thing"):
+        assert_no_trailing(b"12junk", stream, "thing")
+
+    # the same four bytes in a stream the caller owns are the caller's,
+    # and they are still there to be read
+    stream = BytesIO(b"12junk")
+    stream.read(2)
+    assert_no_trailing(stream, stream, "thing")
+    assert stream.read() == b"junk"
+
+
+def test_int_from_integer() -> None:
+    """Round-trip integers through int, hex-string, and bytes forms."""
+    for i in (
+        random.getrandbits(256 - 8),
+        0x0B6CA75B7D3076C561958CCED813797F6D2275C7F42F3856D007D587769A90,
+    ):
+        assert i == int_from_integer(i)
+        assert i == int_from_integer(f" {hex(i).upper()}")
+        assert -i == int_from_integer(f"{hex(-i).upper()} ")
+        assert i == int_from_integer(hex_string(i))
+        assert i == int_from_integer(i.to_bytes(32, byteorder="big", signed=False))
+
+
+def test_int_from_integer_reads_a_str_as_hex() -> None:
+    """Check "1234" reads as 0x1234, and an odd digit count is refused."""
+    # a decimal-looking str is a hex-string like any other, which the
+    # docstring says out loud: 0x1234, not one thousand two hundred
+    # and thirty-four
+    assert int_from_integer("1234") == 4660
+    assert int_from_integer("1234") == int_from_integer("0x1234")
+    assert int_from_integer(1234) == 1234
+
+    # and an odd number of digits is not a one-digit decimal either
+    # (the message is bytes.fromhex's own, which Python 3.14 rephrased,
+    # inside the class this library promises)
+    with pytest.raises(EllipticCurvesValueError, match="invalid hex string: "):
+        int_from_integer("9")
+
+
+def test_hex_string() -> None:
+    """Format int, str and bytes as spaced hex; refuse odd or negative."""
+    int_ = 34492435054806958080
+    assert hex_string(int_) == "01 DEADBEEF 00000000"
+    assert hex_string(hex(int_).lower()) == "01 DEADBEEF 00000000"
+
+    a_str = "01de adbeef00000000"
+    assert hex_string(a_str) == "01 DEADBEEF 00000000"
+    a_bytes = bytes.fromhex(a_str)
+    assert hex_string(a_bytes) == "01 DEADBEEF 00000000"
+
+    # invalid hex-string: odd number of hex digits
+    # (Python 3.14 rephrased the message bytes.fromhex raises)
+    a_str = "1deadbeef00000000"
+    with pytest.raises(EllipticCurvesValueError, match="invalid hex string: "):
+        hex_string(a_str)
+
+    int_ = -1
+    with pytest.raises(EllipticCurvesValueError, match="negative integer: "):
+        hex_string(int_)
+
+    # zero is not negative: `< 0` weakened to `<= 0` would refuse it
+    assert hex_string(0) == "00"
+
+    # a hex length that is an exact multiple of 8 (here 16, unlike the
+    # 18-digit vector above): the index loop's stop bound at 0 is what
+    # keeps the top group from being an empty one -- read as -1 instead,
+    # 0 itself joins the indexes and a leading space appears before "DE"
+    assert hex_string(0xDEADBEEF00000000) == "DEADBEEF 00000000"
+
+
+def test_int_from_bits() -> None:
+    """Discard bits on the right down to nlen, or none if there are fewer.
+
+    Every caller in this codebase hashes into exactly `ec.nlen` bits, so
+    `blen == nlen` is the only case they exercise; `blen > nlen` is the
+    truncation the docstring is about, and `blen < nlen` -- fewer bits
+    than asked for -- is `n` weakened from `blen - nlen` to a negative
+    shift count away from `i >> n` raising instead of returning `i`
+    unchanged.
+    """
+    assert int_from_bits(b"\xff", 4) == 0b1111
+    assert int_from_bits(b"\xff\x00", 4) == 0b1111
+    assert int_from_bits(b"\xff", 16) == 0xFF
+
+
+def test_octets_are_bytes_or_the_hex_string_of_bytes_and_nothing_else() -> None:
+    """A tuple is refused rather than measured as if it were octets.
+
+    Passed through unchanged, `len` of a tuple of 33 ints is 33, which a
+    size check alone accepts as a compressed key. Every buffer is still
+    taken.
+    """
+    assert bytes_from_octets(b"\x00\x01") == b"\x00\x01"
+    assert bytes_from_octets("0001") == b"\x00\x01"
+    # every buffer `Octets` names, and what reaches this is whatever a
+    # field was built from rather than only what a caller writes
+    assert bytes_from_octets(bytearray(b"\x00\x01")) == b"\x00\x01"
+    assert bytes_from_octets(memoryview(b"\x00\x01")) == b"\x00\x01"
+
+    for not_octets in (tuple(range(33)), [1, 2], None, 1.5):
+        with pytest.raises(EllipticCurvesTypeError, match="invalid octets type: "):
+            bytes_from_octets(not_octets)  # type: ignore[arg-type]
+        with pytest.raises(EllipticCurvesTypeError, match="invalid octets type: "):
+            int_from_integer(not_octets)  # type: ignore[arg-type]
+    # an int is an `Integer` and no `Octets`, so the two differ on it
+    assert int_from_integer(1) == 1
+    with pytest.raises(EllipticCurvesTypeError, match="invalid octets type: int"):
+        bytes_from_octets(1)  # type: ignore[arg-type]
+
+    # the hex string that is not one, in both, with the message
+    # `bytes.fromhex` gives: a position, and never the string itself
+    for not_hex in ("9", "zz", "not hex at all"):
+        with pytest.raises(EllipticCurvesValueError, match="invalid hex string: "):
+            bytes_from_octets(not_hex)
+        with pytest.raises(EllipticCurvesValueError, match="invalid hex string: "):
+            int_from_integer(not_hex)
+    with pytest.raises(EllipticCurvesValueError, match="invalid hex integer: "):
+        int_from_integer("0xzz")
+
+
+def test_a_buffer_becomes_the_bytes_the_signature_promises() -> None:
+    """`-> bytes`, and not the caller's own buffer handed back.
+
+    A `bytearray` or a `memoryview` returned as it came stays the caller's, so a
+    write to it afterwards rewrites whatever the library built from it. Nor is
+    either the `bytes` the annotation promises: a bytearray keys no dict and a
+    memoryview concatenates with nothing (issue btclib-org/btclib#1255).
+    """
+    for spelling in (b"\x00\x01", bytearray(b"\x00\x01"), memoryview(b"\x00\x01")):
+        assert type(bytes_from_octets(spelling)) is bytes
+        assert bytes_from_octets(spelling) == b"\x00\x01"
+
+    # the size check is on the way out and copies nothing of its own, so
+    # it is asked here too rather than assumed to share the arm above
+    buffer = bytearray(b"\x00\x01")
+    copied = bytes_from_octets(buffer, 2)
+    buffer[0] = 0xFF
+    assert copied == b"\x00\x01"
+
+
+def test_a_non_contiguous_memoryview_is_refused_at_the_coercion() -> None:
+    """A strided slice is `Octets` to the annotation, `BufferError` underneath.
+
+    `mv[::2]` is not C-contiguous, and were `bytes_from_octets` to hand it back
+    untouched, the failure would reach whichever consumer used the buffer next
+    -- a hash with a bare `BufferError`, a public entry point rather than this
+    module. The refusal is raised here instead, once, at the coercion every
+    `Octets` parameter passes (issue btclib-org/btclib#1260).
+    """
+    raw = bytes(range(64))
+    strided = memoryview(raw)[::2]
+    assert not strided.c_contiguous
+
+    with pytest.raises(
+        EllipticCurvesValueError, match="invalid octets: non-contiguous"
+    ):
+        bytes_from_octets(strided)
+    with pytest.raises(
+        EllipticCurvesValueError, match="invalid octets: non-contiguous"
+    ):
+        reduce_to_hlen(strided)
+
+    # a contiguous slice is taken, same as any other buffer
+    contiguous = memoryview(raw)[:32]
+    assert bytes_from_octets(contiguous) == raw[:32]
+    assert reduce_to_hlen(contiguous) == reduce_to_hlen(raw[:32])
+
+
+def test_a_memoryview_of_the_wrong_format_is_refused_at_the_coercion() -> None:
+    """A memoryview cast to a non-byte format reads as elements, not octets.
+
+    `array.array("I", [1, 2])` is 8 octets read as two 4-byte unsigned ints; a
+    memoryview over it is C-contiguous, so the contiguity check alone let it
+    through, and `len()` of it answers 2 where a consumer reading octets means 8
+    (issue btclib-org/btclib#1430). Refused here, once, at the same coercion
+    every `Octets` parameter passes.
+    """
+    raw = bytes(range(8))
+    wide = memoryview(array.array("I", [1, 2]))
+    assert wide.c_contiguous
+    assert wide.format != "B"
+    assert len(wide) == 2
+    assert wide.nbytes == 8
+
+    with pytest.raises(
+        EllipticCurvesValueError, match="invalid octets: memoryview format"
+    ):
+        bytes_from_octets(wide)
+    with pytest.raises(
+        EllipticCurvesValueError, match="invalid octets: memoryview format"
+    ):
+        reduce_to_hlen(wide)
+
+    # a plain memoryview, and one cast back to unsigned bytes, are format
+    # "B" and taken, same as any other buffer
+    plain = memoryview(raw)
+    assert plain.format == "B"
+    assert bytes_from_octets(plain) == raw
+    cast_back = wide.cast("B")
+    assert cast_back.format == "B"
+    assert bytes_from_octets(cast_back) == wide.tobytes()
+
+
+def test_is_octets_answers_one_octets_not_a_sequence_of_them() -> None:
+    """The question `bytes_from_octets` embeds, and two other callers ask.
+
+    Every `Octets` spelling is itself iterable, which is what makes a
+    single one hard to tell from a sequence of them by shape alone; a
+    `list` or a `tuple` of `Octets` is not one itself.
+    """
+    for one in (b"\x00\x01", "0001", bytearray(b"\x00\x01"), memoryview(b"\x00\x01")):
+        assert is_octets(one)
+    for many in ([b"\x00"], (b"\x00", b"\x01"), []):
+        assert not is_octets(many)
+
+
+def test_a_string_is_ascii_or_refused() -> None:
+    """Bytes outside ascii are refused, naming what they were read as."""
+    assert str_from_string(b"abc", "armor") == "abc"
+    with pytest.raises(EllipticCurvesValueError, match="non-ascii character in armor"):
+        str_from_string(b"\xe0", "armor")

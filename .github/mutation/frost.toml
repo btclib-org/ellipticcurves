@@ -1,0 +1,33 @@
+# FROST, mutated: BIP445's nonce generation and aggregation, partial
+# signatures and their aggregation, and the tweaks. musig2.toml asks the
+# same question one BIP apart.
+#
+# The survivors of this module were weighed on btclib-org/btclib's copy
+# of it, in its own `.github/mutation/frost.toml`. This tree's
+# scheduled run and its `frost-survivors.txt` artifact are where the next
+# weighing reads from.
+
+[cosmic-ray]
+module-path = "src/ellipticcurves/ecc/frost.py"
+
+# the module's own file
+test-command = """python -m pytest -x -q -n0 -p no:randomly \
+  tests/ecc/frost_test.py"""
+
+# seconds of wall clock: a timeout is reported KILLED, so slack is the
+# safe direction
+timeout = 300
+
+excluded-modules = []
+
+# every `|` in the module is in an annotation, whose mutants are
+# equivalent under deferred annotation evaluation (PEP 649); the one
+# other bitwise operator is `^`, over the nonce seed, which no filter
+# touches:
+#
+#   grep -n ' | ' src/ellipticcurves/ecc/frost.py
+[cosmic-ray.filters.operators-filter]
+exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
+
+[cosmic-ray.distributor]
+name = "local"

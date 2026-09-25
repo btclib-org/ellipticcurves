@@ -1,0 +1,43 @@
+# Key agreement and key derivation, mutated: `ecc/dh.py`'s Diffie-Hellman
+# and `kdf.py`'s ANSI X9.63 and HKDF, whose output length is the numeric
+# bound a mutant most often moves -- negative, zero, maximum and
+# maximum-plus-one, and a bool passing where a bool is not a number.
+# tests/integer_policy_test.py is beside each module's own file because
+# it is where that bool refusal is asserted by name.
+#
+# The survivors of `ecc/dh.py` and of `kdf.py`'s ANSI X9.63 KDF were
+# weighed on btclib-org/btclib's copies of these modules, in its own
+# `.github/mutation/numeric.toml`, a scope holding btclib's `amount.py`
+# and `fee.py` beside them; that file's record of its session puts HKDF
+# outside the session it read, so no weighing covers HKDF's mutants yet.
+# This tree's scheduled run and its `kdf-survivors.txt` artifact are where
+# the next weighing reads from.
+
+[cosmic-ray]
+module-path = [
+    "src/ellipticcurves/ecc/dh.py",
+    "src/ellipticcurves/kdf.py",
+]
+
+test-command = """python -m pytest -x -q -n0 -p no:randomly \
+  tests/ecc/dh_test.py tests/kdf_test.py tests/integer_policy_test.py"""
+
+# narrow, where the other profiles' is wide: a mutant widening the length
+# bound is answered by memory and not by the clock, `ansi_x9_63_kdf`
+# sizing one buffer from the block count, so it meets the address-space
+# limit a session runs under at the first statement. What the clock still
+# answers is a loop no bound stops, and a wide timeout would let those
+# spend the budget while the session judges a fraction of its scope
+timeout = 30
+
+excluded-modules = []
+
+# every `|` in the two modules is in an annotation, whose mutants are
+# equivalent under deferred annotation evaluation (PEP 649):
+#
+#   grep -n ' | ' src/ellipticcurves/ecc/dh.py src/ellipticcurves/kdf.py
+[cosmic-ray.filters.operators-filter]
+exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
+
+[cosmic-ray.distributor]
+name = "local"

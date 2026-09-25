@@ -1,0 +1,66 @@
+---
+name: Bug report
+description: Something in ellipticcurves does not work as documented
+labels: [bug]
+
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you observed, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce it
+      description: >
+        The shortest Python that shows it, and the full traceback if there
+        is one. The values that trigger it matter: paste the actual curve,
+        point, message and signature, and never a private key you still
+        use.
+      render: python
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ellipticcurves version
+      description: >
+        `python -c "from importlib.metadata import version;
+        print(version('ellipticcurves'))"`
+      placeholder: "2026.10"
+    validations:
+      required: true
+
+  - type: input
+    id: bindings
+    attributes:
+      label: btclib-secp256k1 version, if installed
+      description: >
+        `python -c "from importlib.metadata import version;
+        print(version('btclib-secp256k1'))"`. On secp256k1 the bindings
+        answer where they are installed and the Python arithmetic where
+        they are not, so which one ran is part of the report.
+      placeholder: "0.8.0.8"
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and interpreter
+      description: >
+        `python -VV` and the operating system, architecture included.
+      placeholder: "CPython 3.14.0, macOS 26.0 arm64"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: >
+        The standard or specification the behaviour should follow, a test
+        vector it disagrees with, and the version this last worked on.

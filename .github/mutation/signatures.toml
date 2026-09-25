@@ -1,0 +1,47 @@
+# Schnorr and ECDSA signing and verification, mutated: nonce derivation,
+# the DER and BIP340 codecs, low-s and lower-x normalization, and the
+# recovery and anti-exfil paths. The two modules share shape and test
+# fixtures, which is why they are one scope.
+#
+# `curves.curve.mult`, `double_mult_var` and `multi_mult_var` call the
+# libsecp256k1 bindings for secp256k1, so a mutant of the Python point
+# arithmetic is invisible to a test running the default curve; that
+# arithmetic is curve_group.toml's scope and not this one's.
+#
+# The survivors of these two modules were weighed on btclib-org/btclib's
+# copies of them, in its own `.github/mutation/signatures.toml`.
+# This tree's scheduled run and its `signatures-survivors.txt` artifact
+# are where the next weighing reads from.
+
+[cosmic-ray]
+module-path = [
+    "src/ellipticcurves/ecc/ssa.py",
+    "src/ellipticcurves/ecc/dsa.py",
+]
+
+# each module's own file; der_test.py is dsa.py's DER codec;
+# dsa_anti_exfil_test.py and commit_nonce_test.py are the anti-exfil and
+# sign-to-contract paths, the tests that call `ssa.sign_custom`; and
+# parse_contract_test.py is the parse and serialize boundary convention
+test-command = """python -m pytest -x -q -n0 -p no:randomly \
+  tests/ecc/ssa_test.py tests/ecc/dsa_test.py tests/ecc/der_test.py \
+  tests/ecc/dsa_anti_exfil_test.py tests/ecc/commit_nonce_test.py \
+  tests/parse_contract_test.py"""
+
+# seconds of wall clock: a timeout is reported KILLED, so slack is the
+# safe direction
+timeout = 300
+
+excluded-modules = []
+
+# No `BitOr` exclusion, where musig2.toml and frost.toml carry one: dsa.py
+# writes DER's long length form as `0x80 | len(length_bytes)`, which is
+# code, and the filter excludes by operator and not by line. The mutants
+# of the `X | None` annotations beside it survive instead, equivalent
+# under deferred annotation evaluation (PEP 649), and read as that class
+# in the survivors file:
+#
+#   grep -n ' | ' src/ellipticcurves/ecc/ssa.py src/ellipticcurves/ecc/dsa.py
+
+[cosmic-ray.distributor]
+name = "local"

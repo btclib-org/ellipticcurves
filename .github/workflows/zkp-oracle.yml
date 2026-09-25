@@ -1,0 +1,129 @@
+---
+name: zkp-oracle
+
+# installs btclib-secp256k1 from its sdist with
+# `BTCLIB_LIBSECP256K1_ZKP=true`, so that its second extension,
+# `_btclib_secp256k1_zkp`, exists, and runs the tests marked `zkp`
+# against it. `true` and not `1`: btclib-secp256k1's
+# `scripts/cffi_build.py` compares the variable with that string, so `1`
+# would build nothing and leave this job green having compared nothing.
+#
+# A sentinel and not a gate: `--no-binary-package` compiles two C
+# libraries from source, mainline libsecp256k1 and the secp256k1-zkp
+# fork the flag adds, and no published wheel of btclib-secp256k1 carries
+# the second extension, which `btclib_secp256k1.zkp`'s own docstring
+# says. `test.yml` and every gate stay on the published wheels.
+#
+# Every oracle compares this package against libsecp256k1-zkp and moves
+# no run-time path: sign-to-contract in both directions
+# (`tests/ecc/commit_nonce_test.py`), the MuSig2 adaptor
+# (`tests/ecc/musig2_test.py`), the Pedersen commitment and generator
+# (`tests/ecc/pedersen_test.py`), the rangeproof codec and writer
+# (`tests/ecc/rangeproof_test.py`) and the Borromean ring signature
+# (`tests/ecc/borromean_test.py`).
+#
+# `tests.needs_zkp` is the marker this job selects on and
+# `tests.ZKP_AVAILABLE` the flag that skips it everywhere else;
+# `tests/__init__.py` says how the flag is probed. A selection whose
+# every test skips exits 0, so the step asserting the flag is what keeps
+# a build that silently kept the unflagged extension from reading green
+
+on:
+  schedule:
+    # section 10's calendar in btclib-org/.github, and not this file's to
+    # restate. Only the default branch schedules workflows, so on any
+    # other branch this is reachable through the dispatch below, and
+    # through the pull_request trigger further down
+    - cron: "48 2 * * 3"
+  workflow_dispatch:
+  pull_request:
+    # ready_for_review and closed for the reason vendored-vectors.yml's
+    # own trigger gives
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+    # what the oracle compares, so a pull request changing it is asked
+    # before the weekly run would. The tests named are the files holding
+    # the marked tests, beside the vectors `rangeproof_test.py` re-signs;
+    # the modules are what those tests compare. `tests/__init__.py` and
+    # `tests/conftest.py` decide whether the marked tests run or skip,
+    # and a change leaving them skipping reads on every unflagged run
+    # exactly as no change at all, so this job is the one place it shows.
+    # `curves/`, `ssa.py` and `rfc6979_nonce.py` stay out: every other
+    # test of the suite reaches them, so a break there is loud elsewhere
+    paths:
+      - .github/workflows/zkp-oracle.yml
+      - tests/__init__.py
+      - tests/conftest.py
+      - tests/ecc/borromean_test.py
+      - tests/ecc/commit_nonce_test.py
+      - tests/ecc/musig2_test.py
+      - tests/ecc/pedersen_test.py
+      - tests/ecc/rangeproof_test.py
+      - tests/ecc/_data/zkp_rangeproof_vectors.json
+      - src/ellipticcurves/ecc/borromean.py
+      - src/ellipticcurves/ecc/dsa.py
+      - src/ellipticcurves/ecc/commit_nonce.py
+      - src/ellipticcurves/ecc/musig2.py
+      - src/ellipticcurves/ecc/pedersen.py
+      - src/ellipticcurves/ecc/rangeproof.py
+
+permissions:
+  contents: read
+
+# github.event.pull_request.number, not github.head_ref, for the reason
+# vendored-vectors.yml's own concurrency block gives
+concurrency:
+  group: zkp-oracle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
+
+jobs:
+  zkp:
+    name: Build the flagged secp256k1-zkp extension, and run its tests
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    # far above what the build and the tests take: what this bounds is a
+    # hung job
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+      # --no-binary-package keeps uv from resolving the published wheel,
+      # which carries no `_btclib_secp256k1_zkp` whatever the flag says.
+      # BTCLIB_LIBSECP256K1_DYNAMIC stays unset: cffi_build.py declines
+      # the flag beside a dynamic build. --reinstall-package and
+      # --no-cache because neither uv's build cache nor an
+      # already-satisfied environment is keyed on this variable, only on
+      # the sdist's content, so without them an unflagged build already
+      # in place stays there, saying nothing. The same pair takes an
+      # environment back out of this arm: a plain `uv sync --locked`
+      # leaves the flagged extension where it is
+      - name: Sync the environment, building btclib-secp256k1 from the sdist
+        env:
+          BTCLIB_LIBSECP256K1_ZKP: "true"
+        run: >
+          uv sync --locked --no-default-groups --group test
+          --reinstall-package btclib-secp256k1 --no-cache
+          --no-binary-package btclib-secp256k1
+      # the sync fails loudly on a real compile error; what it would not
+      # fail on is succeeding against an unflagged extension, which this
+      # asserts before pytest is asked anything. The flag and not the
+      # attribute it is derived from, because the flag is what
+      # `tests/conftest.py` reads to decide run or skip
+      - name: Assert the marked tests will run rather than skip
+        run: >
+          uv run --locked --no-default-groups --group test
+          python -c "import tests; assert tests.ZKP_AVAILABLE"
+      # pytest's exit 5 ("no tests ran") is not tolerated: a selection
+      # that collects nothing, a renamed marker or a moved file, is a
+      # real failure. `-m` already sets the run's coverage floor to zero
+      # (`tests/conftest.py`'s `coverage_fail_under`), so `--no-cov` only
+      # saves a report nobody would read
+      - name: Run the tests marked zkp
+        run: >
+          uv run --locked --no-default-groups --group test
+          pytest -m zkp --no-cov

@@ -1,0 +1,125 @@
+---
+name: pypi-install
+
+# the sentinel on what users actually install. Every other workflow here
+# tests artifacts built in the same run, from the tree that triggered it:
+# nothing else says whether the wheel already on PyPI still installs and
+# still works. What breaks it is not a change in this repository -- a new
+# runner image, a new interpreter, a yanked dependency -- so it runs on a
+# schedule rather than on a pull request
+
+on:
+  # called by release.yml once PyPI has accepted the upload, with the tag,
+  # so the wait below holds until the index serves that version; the
+  # schedule and a dispatch pass none and install whatever the index serves
+  workflow_call:
+    inputs:
+      version:
+        description: >-
+          the tag whose version the index must serve before the matrix
+          installs anything, empty on a run with no release behind it
+        required: false
+        type: string
+        default: ""
+  schedule:
+    # section 10's calendar in btclib-org/.github, and not this file's to
+    # restate
+    - cron: "48 5 * * 3"
+  workflow_dispatch:
+  # so a change to this file is checked by the run it configures. No
+  # closed type, for the reason section 10 of the organization's standard
+  # gives a group that does not cancel in progress: a closed event would
+  # cancel nothing and only start a run
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/pypi-install.yml
+
+# least privilege for the GITHUB_TOKEN: everything running in a job
+# (actions, pip) can read the token, so it must not be able to write to
+# the repository
+permissions:
+  contents: read
+
+# never cancel a sentinel: the run a release calls, the weekly one and a
+# dispatch share this group, each is a sample worth keeping, and none
+# supersedes the others. A concurrent run queues instead
+concurrency:
+  group: pypi-install-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # one question about the index, asked once, ahead of every cell: a cell
+  # that starts before the index serves the new file tests the previous
+  # version and reports a pass for it. The wait is btclib-org/.github's
+  # reusable-wait-for-index.yml, called at @main
+  wait-for-index:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@main
+    with:
+      package: ellipticcurves
+      version: ${{ inputs.version }}
+
+  install-published:
+    name: >-
+      ${{ matrix.no-binary && 'Build' || 'Install' }}
+      ${{ matrix.python-version }} from PyPI on ${{ matrix.os }}
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ${{ matrix.os }}
+    needs: wait-for-index
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # every image the platform sweeps run, at the floor and at the two
+        # newest interpreters, each of those two beside its free-threaded
+        # build
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-26-intel
+          - macos-latest
+          - windows-latest
+          - windows-11-arm
+        python-version: ["3.11", "3.14", "3.14t", "3.15", "3.15t"]
+        # and one cell that builds the sdist rather than taking the wheel,
+        # which is the other half of what the index serves
+        include:
+          - os: ubuntu-latest
+            python-version: "3.13"
+            no-binary: true
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          # an X.Y with no final release out matches its release candidate
+          # only with this set, and matches the final once there is one
+          allow-prereleases: true
+      - name: Install the published package
+        shell: bash
+        env:
+          NO_BINARY: ${{ matrix.no-binary || false }}
+        run: |
+          python -m pip install -U pip
+          if [ "$NO_BINARY" = "true" ]; then
+            python -m pip install --verbose --no-binary ellipticcurves ellipticcurves
+          else
+            python -m pip install --verbose --only-binary ellipticcurves ellipticcurves
+          fi
+      - name: Import the installed package, read its version, sign once
+        shell: bash
+        run: |
+          python - <<'PY'
+          from importlib.metadata import requires, version
+          import ellipticcurves
+          from ellipticcurves.curves import mult
+          from ellipticcurves.ecc import dsa
+
+          print("installed version:", version("ellipticcurves"))
+          print("requires:", requires("ellipticcurves"))
+          assert ellipticcurves.__version__ == version("ellipticcurves")
+          sig = dsa.sign(b"ellipticcurves", 1)
+          assert dsa.verify(b"ellipticcurves", mult(1), sig)
+          print("ok")
+          PY
