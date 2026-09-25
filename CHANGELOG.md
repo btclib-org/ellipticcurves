@@ -30,3 +30,9 @@ driver that would keep both sides' numbers.
 The package: elliptic curve arithmetic over any short Weierstrass curve,
 the signature, commitment and key-agreement schemes built on it, and the
 vectors they answer to (issue btclib-org/btclib#2282).
+
+### `REVIEWING.md` lets a filed issue carry its fix
+
+An issue filed from a review may say the fix where one is known: *What is
+filed, and what is not* dropped its "no fix", the filing bar standing as it
+was (issue btclib-org/.github#1378).
