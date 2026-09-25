@@ -1,0 +1,141 @@
+# ellipticcurves
+
+Elliptic curve arithmetic, and the signature, key-agreement and
+commitment schemes built on it, in typed Python.
+
+<!-- The badges are what the reader decides with, in three groups: what the
+software is and whether it can be used, whether it works, and what the
+OpenSSF makes of it.
+
+Inside the second group the gates come first, in the order a commit meets
+them, and the sentinels follow in the order section 10 of the organization
+standard schedules them -- the badge order *is* the calendar order over
+that subset, which is why the two move together or not at all. The day and
+hour each sentinel owns live in that section and are not copied here: a
+reader wanting the schedule reads it there, where it is still true.
+
+One badge per line keeps a change to one line and every line inside MD013,
+whose 80 columns bind only where a space follows them.
+
+A badge that reports no state -- "we use ruff", "we use uv" -- reports a
+choice instead, and those are in CONTRIBUTING.md, beside the prose that
+says how the choice is enforced.
+-->
+[![PyPI version](https://img.shields.io/pypi/v/ellipticcurves.svg?logo=pypi)](https://pypi.org/project/ellipticcurves/)
+[![GitHub release](https://img.shields.io/github/v/release/btclib-org/ellipticcurves.svg)](https://github.com/btclib-org/ellipticcurves/releases)
+[![development status](https://img.shields.io/pypi/status/ellipticcurves.svg)](https://pypi.org/project/ellipticcurves/)
+[![license](https://img.shields.io/github/license/btclib-org/ellipticcurves.svg)](https://github.com/btclib-org/ellipticcurves/blob/main/LICENSE)
+[![downloads](https://static.pepy.tech/badge/ellipticcurves)](https://pepy.tech/projects/ellipticcurves)
+[![supported Python versions](https://img.shields.io/pypi/pyversions/ellipticcurves.svg?logo=python)](https://pypi.org/project/ellipticcurves/)
+[![implementation](https://img.shields.io/pypi/implementation/ellipticcurves.svg)](https://pypi.org/project/ellipticcurves/)
+[![wheel](https://img.shields.io/pypi/wheel/ellipticcurves.svg)](https://pypi.org/project/ellipticcurves/)
+
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/ellipticcurves/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/ellipticcurves/main)
+[![lint workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/lint.yml?query=branch%3Amain)
+[![test workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/test.yml?query=branch%3Amain)
+[![docs workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/docs.yml?query=branch%3Amain)
+[![documentation build](https://app.readthedocs.org/projects/ellipticcurves/badge/?version=latest)](https://ellipticcurves.readthedocs.io)
+[![deps-latest workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/deps-latest.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/deps-latest.yml?query=branch%3Amain)
+[![pypi-install workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/pypi-install.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/pypi-install.yml?query=branch%3Amain)
+[![deps-oldest workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/deps-oldest.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/deps-oldest.yml?query=branch%3Amain)
+[![os-macos workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/os-macos.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/os-macos.yml?query=branch%3Amain)
+[![os-ubuntu workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/os-ubuntu.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/os-ubuntu.yml?query=branch%3Amain)
+[![os-windows workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/os-windows.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/os-windows.yml?query=branch%3Amain)
+[![links workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/links.yml?query=branch%3Amain)
+[![sdist-rebuild workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/sdist-rebuild.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/sdist-rebuild.yml?query=branch%3Amain)
+[![codeql workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/codeql.yml?query=branch%3Amain)
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/ellipticcurves/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/ellipticcurves)
+
+It is fully annotated and ships `py.typed`.
+
+## What is here
+
+- modular arithmetic: inverse, blinded and variable-time, Legendre
+  symbol, square root (`number_theory`)
+- the elliptic curve class, over any curve in short Weierstrass form
+    - Jacobian coordinates, and the secp256k1 endomorphism
+    - double and multi scalar multiplication (Straus's algorithm and
+      Bos-Coster's)
+    - SEC 1 octet encodings of points and scalars
+    - the SEC 2 v1 and v2, NIST and Brainpool curves, and low
+      cardinality test curves
+- ECDSA, with DER encoding, public key recovery, low-R grinding and
+  [RFC 6979](https://www.rfc-editor.org/rfc/rfc6979.html) deterministic
+  nonces
+- [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
+  Schnorr signatures, and their batch verification
+- the anti-exfil protocol, and the sign-to-contract commitment it rests
+  on, for both signature schemes
+- [MuSig2](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
+  multi-signatures and
+  [FROST](https://github.com/bitcoin/bips/blob/master/bip-0445.mediawiki)
+  threshold signatures, one primitive per round of each protocol
+- Diffie-Hellman, and the
+  [BIP324](https://github.com/bitcoin/bips/blob/master/bip-0324.mediawiki)
+  ElligatorSwift encoding of a public key
+- [BIP374](https://github.com/bitcoin/bips/blob/master/bip-0374.mediawiki)
+  discrete logarithm equality proofs
+- ECIES in the BIE1 layout, the block cipher supplied by the caller
+- Pedersen commitments, Borromean ring signatures and the range proofs
+  of libsecp256k1-zkp
+- the ANSI X9.63 key derivation function and HKDF (`kdf`), and the BIP340
+  tagged hash (`hashes`)
+
+For secp256k1 the arithmetic is delegated to
+[btclib-secp256k1](https://github.com/btclib-org/btclib-secp256k1),
+bindings to Bitcoin Core's
+[libsecp256k1](https://github.com/bitcoin-core/secp256k1), wherever a
+call's own guard admits them. They are the `secp256k1` extra below.
+Without them, or with the delegation turned off, every call still
+answers, on the Python arithmetic, which is slower and not constant-time;
+that Python arithmetic serves every other curve anyway, and the suite
+validates it against the bindings.
+[SECURITY.md](./SECURITY.md)'s "Limitations, not vulnerabilities" states
+which calls delegate and what the Python path does and does not hide.
+
+The suite answers to vectors their authors publish -- the BIPs' own,
+Wycheproof's and libsecp256k1-zkp's -- and
+[tests/_data/README.md](./tests/_data/README.md) pins each vendored file
+to the upstream commit it was copied from.
+
+## Installing
+
+```shell
+python -m pip install --upgrade "ellipticcurves[secp256k1]"
+```
+
+The `secp256k1` extra installs the
+[libsecp256k1 bindings](https://github.com/btclib-org/btclib-secp256k1).
+The quotes are for zsh, which reads the brackets as a glob.
+
+## Security
+
+[SECURITY.md](./SECURITY.md) says how to report a vulnerability, which
+versions are supported, and how a published file is traced back to the
+run that built it.
+
+## Contributing
+
+[CONTRIBUTING.md](./CONTRIBUTING.md) has the commands each CI job runs,
+verbatim. `uv sync` creates the environment; uv is the only tool that has
+to be installed. [REVIEWING.md](./REVIEWING.md) is what a pull request is
+answered against.
+
+How the organization decides, and who holds which role, is its
+[GOVERNANCE.md](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md);
+what it intends to do, and what it deliberately does not, is its
+[ROADMAP.md](https://github.com/btclib-org/.github/blob/main/ROADMAP.md).
+
+## Links
+
+- Documentation: <https://ellipticcurves.readthedocs.io/>
+- Source: <https://github.com/btclib-org/ellipticcurves>
+- Releases: <https://github.com/btclib-org/ellipticcurves/releases>
+- [CHANGELOG.md](./CHANGELOG.md), and [RELEASE_NOTES.md](./RELEASE_NOTES.md)
+  for what a release asks a user to act on
+
+---
+
+The btclib organization and its projects are actively supported by
+[DGI](https://dgi.io) and [CheckSig](https://checksig.com).
