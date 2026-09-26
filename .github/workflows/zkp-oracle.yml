@@ -59,12 +59,12 @@ on:
       - tests/ecc/pedersen_test.py
       - tests/ecc/rangeproof_test.py
       - tests/ecc/_data/zkp_rangeproof_vectors.json
-      - src/ellipticcurves/ecc/borromean.py
-      - src/ellipticcurves/ecc/dsa.py
-      - src/ellipticcurves/ecc/commit_nonce.py
-      - src/ellipticcurves/ecc/musig2.py
-      - src/ellipticcurves/ecc/pedersen.py
-      - src/ellipticcurves/ecc/rangeproof.py
+      - src/btclib_ecc/ecc/borromean.py
+      - src/btclib_ecc/ecc/dsa.py
+      - src/btclib_ecc/ecc/commit_nonce.py
+      - src/btclib_ecc/ecc/musig2.py
+      - src/btclib_ecc/ecc/pedersen.py
+      - src/btclib_ecc/ecc/rangeproof.py
 
 permissions:
   contents: read

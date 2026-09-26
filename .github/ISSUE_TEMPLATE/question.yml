@@ -1,6 +1,6 @@
 ---
 name: Question
-description: Ask how ellipticcurves does something, or why it does it that way
+description: Ask how btclib-ecc does something, or why it does it that way
 labels: [question]
 
 body:
@@ -9,7 +9,7 @@ body:
       value: >
         Discussions are not enabled here, so a question is an issue: this
         form is what keeps one from having to be filed as a bug. The
-        [documentation](https://ellipticcurves.readthedocs.io/) and the
+        [documentation](https://btclib-ecc.readthedocs.io/) and the
         [README](https://github.com/btclib-org/ellipticcurves/blob/main/README.md)
         come first, and for a real-time answer there is the Slack channel
         behind the *Chat with the developers* link on the new-issue page.
@@ -32,5 +32,5 @@ body:
       label: Version, if it matters
       description: >
         `python -c "from importlib.metadata import version;
-        print(version('ellipticcurves'))"`
+        print(version('btclib-ecc'))"`
       placeholder: "2026.10"

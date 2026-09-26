@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.ecies` module.
+"""Tests for the `btclib_ecc.ecc.ecies` module.
 
 **This file drives an AES-128, and it is here because tests are not
 shipped.** `tests/__init__.py` has why a test writes its own block
@@ -24,13 +24,13 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.alias import Point
-from ellipticcurves.curves import bytes_from_point, mult, secp256k1
-from ellipticcurves.ecc import ecies
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.alias import Point
+from btclib_ecc.curves import bytes_from_point, mult, secp256k1
+from btclib_ecc.ecc import ecies
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
 )
 from tests import aes_decrypt_block, aes_encrypt_block, aes_expand_key, aes_xor
 
@@ -211,7 +211,7 @@ def test_decrypt_with_the_wrong_key() -> None:
     cannot tell them apart.
     """
     wrong_key = _electrum_key_from_password(b"pw124")
-    with pytest.raises(EllipticCurvesRuntimeError, match="invalid MAC"):
+    with pytest.raises(BTClibEccRuntimeError, match="invalid MAC"):
         ecies.decrypt(_ELECTRUM_SHORT_ARMOR, wrong_key, aes_128_cbc_decrypt)
 
 
@@ -276,7 +276,7 @@ def test_encrypt_refuses_a_cipher_that_does_not_pad() -> None:
         return bytes(out)
 
     pub_key = mult(0xC28FCA386C7A227600B2FE50B7CAE11EC86D3BF1FBE471BE89827E19D72AA1D)
-    with pytest.raises(EllipticCurvesValueError, match="encrypt_f did not pad"):
+    with pytest.raises(BTClibEccValueError, match="encrypt_f did not pad"):
         ecies.encrypt(bytes(32), pub_key, no_padding)
 
 
@@ -286,7 +286,7 @@ def test_magic_is_a_parameter() -> None:
     pub_key = mult(prv_key)
     armor = ecies.encrypt(b"xpub", pub_key, aes_128_cbc_encrypt, magic=b"BIE2")
     assert ecies.decrypt(armor, prv_key, aes_128_cbc_decrypt, magic=b"BIE2") == b"xpub"
-    with pytest.raises(EllipticCurvesValueError, match="invalid magic bytes"):
+    with pytest.raises(BTClibEccValueError, match="invalid magic bytes"):
         ecies.decrypt(armor, prv_key, aes_128_cbc_decrypt)
 
 
@@ -371,11 +371,11 @@ def test_envelope_fields_are_octets_like_every_other_field() -> None:
                 "mac": envelope.mac,
             }
             fields[field] = wrong
-            with pytest.raises(EllipticCurvesTypeError, match="invalid octets type"):
+            with pytest.raises(BTClibEccTypeError, match="invalid octets type"):
                 ecies.Envelope(**fields)
         # and the factory, which concatenates before it builds: a magic
         # of no octet type failed on the `+` rather than as an argument
-        with pytest.raises(EllipticCurvesTypeError, match="invalid octets type"):
+        with pytest.raises(BTClibEccTypeError, match="invalid octets type"):
             ecies.Envelope.from_ciphertext(
                 bytes_from_point(mult(42)), bytes(48), key_m, magic=wrong
             )
@@ -403,7 +403,7 @@ def test_envelope_mac_check_notices_a_flipped_bit() -> None:
         b"\x01" + envelope.ciphertext[1:],
         envelope.mac,
     )
-    with pytest.raises(EllipticCurvesRuntimeError, match="invalid MAC"):
+    with pytest.raises(BTClibEccRuntimeError, match="invalid MAC"):
         tampered.assert_valid_mac(key_m)
 
 
@@ -411,13 +411,9 @@ def test_envelope_skips_validation_when_told_to() -> None:
     """check_validity=False is what lets an invalid envelope be built at all."""
     envelope = ecies.Envelope(b"BIE1", b"", b"", b"", check_validity=False)
     assert envelope.serialize(check_validity=False) == b"BIE1"
-    with pytest.raises(
-        EllipticCurvesValueError, match="invalid ephemeral public key size"
-    ):
+    with pytest.raises(BTClibEccValueError, match="invalid ephemeral public key size"):
         envelope.assert_valid()
-    with pytest.raises(
-        EllipticCurvesValueError, match="invalid ephemeral public key size"
-    ):
+    with pytest.raises(BTClibEccValueError, match="invalid ephemeral public key size"):
         envelope.b64encode()
 
 
@@ -443,27 +439,27 @@ def test_envelope_rejects_a_malformed_field(
     magic, eph_pub_key, ciphertext, mac = _valid_parts()
     parts = [magic, eph_pub_key, ciphertext, mac]
     parts[field] = value
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ecies.Envelope(parts[0], parts[1], parts[2], parts[3])
 
 
 def test_envelope_rejects_an_ephemeral_key_that_is_not_a_point() -> None:
     """33 bytes of the right shape, naming no point on the curve."""
     magic, _, ciphertext, mac = _valid_parts()
-    with pytest.raises(EllipticCurvesValueError, match="not a public key"):
+    with pytest.raises(BTClibEccValueError, match="not a public key"):
         ecies.Envelope(magic, b"\x02" + bytes(32), ciphertext, mac)
 
 
 def test_parse_rejects_a_truncated_envelope() -> None:
     """Refuse an envelope too short to hold its fixed-size fields."""
-    with pytest.raises(EllipticCurvesValueError, match="invalid envelope size"):
+    with pytest.raises(BTClibEccValueError, match="invalid envelope size"):
         ecies.Envelope.parse(b"BIE1" + bytes(80))
 
 
 def test_parse_rejects_the_wrong_magic() -> None:
     """Refuse an envelope whose magic is not the one asked for."""
     envelope = ecies.Envelope(*_valid_parts(), check_validity=False)
-    with pytest.raises(EllipticCurvesValueError, match="invalid magic bytes"):
+    with pytest.raises(BTClibEccValueError, match="invalid magic bytes"):
         ecies.Envelope.parse(envelope.serialize(check_validity=False), magic=b"BIE2")
 
 
@@ -477,7 +473,7 @@ def test_parse_rejects_the_wrong_magic() -> None:
 )
 def test_b64decode_rejects_bad_armor(armor: str, err_msg: str) -> None:
     """Refuse armor that is not valid base64."""
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ecies.Envelope.b64decode(armor)
 
 
@@ -503,5 +499,5 @@ def test_b64decode_requires_the_canonical_encoding() -> None:
     tweaked = f"{armor[:-3]}{alphabet[alphabet.index(armor[-3]) + 1]}=="
     assert tweaked != armor
     assert base64.b64decode(tweaked, validate=True) == envelope.serialize()
-    with pytest.raises(EllipticCurvesValueError, match="not canonical"):
+    with pytest.raises(BTClibEccValueError, match="not canonical"):
         ecies.Envelope.b64decode(tweaked)

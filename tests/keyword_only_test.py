@@ -48,7 +48,7 @@ import pytest
 
 from tests.all_test import library_modules
 
-# Walked from `ellipticcurves`, on the commit this file is part of: every public
+# Walked from `btclib_ecc`, on the commit this file is part of: every public
 # callable that takes at least one keyword-only parameter, and the names
 # of those parameters in declaration order. A site dropping out of this
 # table -- a parameter renamed, one no longer keyword-only, a callable
@@ -57,58 +57,58 @@ from tests.all_test import library_modules
 # a deliberate edit to make, which is what
 # test_the_recorded_surface_is_the_whole_of_it asks for
 KEYWORD_ONLY: dict[str, list[str]] = {
-    "ellipticcurves.curves:point_from_octets": ["hybrid"],
-    "ellipticcurves.curves:set_libsecp256k1_serving": ["serving"],
-    "ellipticcurves.ecc.borromean:BorromeanSig.__init__": ["check_validity"],
-    "ellipticcurves.ecc.borromean:BorromeanSig.parse": ["check_validity"],
-    "ellipticcurves.ecc.borromean:BorromeanSig.serialize": ["check_validity"],
-    "ellipticcurves.ecc.dsa:Sig.__init__": ["check_validity"],
-    "ellipticcurves.ecc.dsa:Sig.parse": ["check_validity", "strict"],
-    "ellipticcurves.ecc.dsa:Sig.serialize": ["check_validity"],
-    "ellipticcurves.ecc.dsa:Signer.sign": ["grind", "verify"],
-    "ellipticcurves.ecc.dsa:Signer.sign_": ["grind", "verify"],
-    "ellipticcurves.ecc.dsa:assert_as_valid": ["commit", "receipt"],
-    "ellipticcurves.ecc.dsa:assert_as_valid_": ["commit_hash", "receipt"],
-    "ellipticcurves.ecc.dsa:recover_sec": ["compressed"],
-    "ellipticcurves.ecc.dsa:recover_sec_": ["compressed"],
-    "ellipticcurves.ecc.dsa:sign": ["grind", "verify", "pub_key", "commit"],
-    "ellipticcurves.ecc.dsa:sign_": ["grind", "verify", "pub_key", "commit_hash"],
-    "ellipticcurves.ecc.dsa:verify": ["commit", "receipt"],
-    "ellipticcurves.ecc.dsa:verify_": ["commit_hash", "receipt"],
-    "ellipticcurves.ecc.ecies:Envelope.__init__": ["check_validity"],
-    "ellipticcurves.ecc.ecies:Envelope.b64decode": ["magic", "check_validity"],
-    "ellipticcurves.ecc.ecies:Envelope.b64encode": ["check_validity"],
-    "ellipticcurves.ecc.ecies:Envelope.from_ciphertext": ["magic"],
-    "ellipticcurves.ecc.ecies:Envelope.parse": ["magic", "check_validity"],
-    "ellipticcurves.ecc.ecies:Envelope.serialize": ["check_validity"],
-    "ellipticcurves.ecc.ecies:decrypt": ["magic"],
-    "ellipticcurves.ecc.ecies:encrypt": ["eph_prv_key", "magic"],
-    "ellipticcurves.ecc.rangeproof:RangeProof.__init__": ["check_validity"],
-    "ellipticcurves.ecc.rangeproof:RangeProof.nonce_chain": ["check_validity"],
-    "ellipticcurves.ecc.rangeproof:RangeProof.parse": ["check_validity"],
-    "ellipticcurves.ecc.rangeproof:RangeProof.pubk_rings": ["check_validity"],
-    "ellipticcurves.ecc.rangeproof:RangeProof.serialize": ["check_validity"],
-    "ellipticcurves.ecc.rangeproof:assert_as_valid": ["extra_commit"],
-    "ellipticcurves.ecc.rangeproof:rewind": ["extra_commit"],
-    "ellipticcurves.ecc.rangeproof:sign": [
+    "btclib_ecc.curves:point_from_octets": ["hybrid"],
+    "btclib_ecc.curves:set_libsecp256k1_serving": ["serving"],
+    "btclib_ecc.ecc.borromean:BorromeanSig.__init__": ["check_validity"],
+    "btclib_ecc.ecc.borromean:BorromeanSig.parse": ["check_validity"],
+    "btclib_ecc.ecc.borromean:BorromeanSig.serialize": ["check_validity"],
+    "btclib_ecc.ecc.dsa:Sig.__init__": ["check_validity"],
+    "btclib_ecc.ecc.dsa:Sig.parse": ["check_validity", "strict"],
+    "btclib_ecc.ecc.dsa:Sig.serialize": ["check_validity"],
+    "btclib_ecc.ecc.dsa:Signer.sign": ["grind", "verify"],
+    "btclib_ecc.ecc.dsa:Signer.sign_": ["grind", "verify"],
+    "btclib_ecc.ecc.dsa:assert_as_valid": ["commit", "receipt"],
+    "btclib_ecc.ecc.dsa:assert_as_valid_": ["commit_hash", "receipt"],
+    "btclib_ecc.ecc.dsa:recover_sec": ["compressed"],
+    "btclib_ecc.ecc.dsa:recover_sec_": ["compressed"],
+    "btclib_ecc.ecc.dsa:sign": ["grind", "verify", "pub_key", "commit"],
+    "btclib_ecc.ecc.dsa:sign_": ["grind", "verify", "pub_key", "commit_hash"],
+    "btclib_ecc.ecc.dsa:verify": ["commit", "receipt"],
+    "btclib_ecc.ecc.dsa:verify_": ["commit_hash", "receipt"],
+    "btclib_ecc.ecc.ecies:Envelope.__init__": ["check_validity"],
+    "btclib_ecc.ecc.ecies:Envelope.b64decode": ["magic", "check_validity"],
+    "btclib_ecc.ecc.ecies:Envelope.b64encode": ["check_validity"],
+    "btclib_ecc.ecc.ecies:Envelope.from_ciphertext": ["magic"],
+    "btclib_ecc.ecc.ecies:Envelope.parse": ["magic", "check_validity"],
+    "btclib_ecc.ecc.ecies:Envelope.serialize": ["check_validity"],
+    "btclib_ecc.ecc.ecies:decrypt": ["magic"],
+    "btclib_ecc.ecc.ecies:encrypt": ["eph_prv_key", "magic"],
+    "btclib_ecc.ecc.rangeproof:RangeProof.__init__": ["check_validity"],
+    "btclib_ecc.ecc.rangeproof:RangeProof.nonce_chain": ["check_validity"],
+    "btclib_ecc.ecc.rangeproof:RangeProof.parse": ["check_validity"],
+    "btclib_ecc.ecc.rangeproof:RangeProof.pubk_rings": ["check_validity"],
+    "btclib_ecc.ecc.rangeproof:RangeProof.serialize": ["check_validity"],
+    "btclib_ecc.ecc.rangeproof:assert_as_valid": ["extra_commit"],
+    "btclib_ecc.ecc.rangeproof:rewind": ["extra_commit"],
+    "btclib_ecc.ecc.rangeproof:sign": [
         "min_value",
         "exp",
         "min_bits",
         "message",
         "extra_commit",
     ],
-    "ellipticcurves.ecc.rangeproof:verify": ["extra_commit"],
-    "ellipticcurves.ecc.ssa:Sig.__init__": ["check_validity"],
-    "ellipticcurves.ecc.ssa:Sig.parse": ["check_validity"],
-    "ellipticcurves.ecc.ssa:Sig.serialize": ["check_validity"],
-    "ellipticcurves.ecc.ssa:Signer.sign": ["verify"],
-    "ellipticcurves.ecc.ssa:Signer.sign_": ["verify"],
-    "ellipticcurves.ecc.ssa:assert_as_valid": ["commit", "receipt"],
-    "ellipticcurves.ecc.ssa:assert_as_valid_": ["commit_hash", "receipt"],
-    "ellipticcurves.ecc.ssa:sign": ["verify", "commit"],
-    "ellipticcurves.ecc.ssa:sign_": ["verify", "commit_hash"],
-    "ellipticcurves.ecc.ssa:verify": ["commit", "receipt"],
-    "ellipticcurves.ecc.ssa:verify_": ["commit_hash", "receipt"],
+    "btclib_ecc.ecc.rangeproof:verify": ["extra_commit"],
+    "btclib_ecc.ecc.ssa:Sig.__init__": ["check_validity"],
+    "btclib_ecc.ecc.ssa:Sig.parse": ["check_validity"],
+    "btclib_ecc.ecc.ssa:Sig.serialize": ["check_validity"],
+    "btclib_ecc.ecc.ssa:Signer.sign": ["verify"],
+    "btclib_ecc.ecc.ssa:Signer.sign_": ["verify"],
+    "btclib_ecc.ecc.ssa:assert_as_valid": ["commit", "receipt"],
+    "btclib_ecc.ecc.ssa:assert_as_valid_": ["commit_hash", "receipt"],
+    "btclib_ecc.ecc.ssa:sign": ["verify", "commit"],
+    "btclib_ecc.ecc.ssa:sign_": ["verify", "commit_hash"],
+    "btclib_ecc.ecc.ssa:verify": ["commit", "receipt"],
+    "btclib_ecc.ecc.ssa:verify_": ["commit_hash", "receipt"],
 }
 
 
@@ -116,7 +116,7 @@ def _resolve(label: str) -> Any:
     """Import `module:Class.method` or `module:function` back to the object.
 
     The colon is the split point rather than the last dot: a module name is
-    dotted too (`ellipticcurves.ecc.dsa`), so the pair is stored apart instead
+    dotted too (`btclib_ecc.ecc.dsa`), so the pair is stored apart instead
     of concatenated and re-split.
     """
     module_name, _, attr_path = label.partition(":")

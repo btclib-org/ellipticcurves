@@ -2,12 +2,12 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.curves.sec_point` module."""
+"""Tests for the `btclib_ecc.curves.sec_point` module."""
 
 import pytest
 
-from ellipticcurves.alias import INF
-from ellipticcurves.curves import (
+from btclib_ecc.alias import INF
+from btclib_ecc.curves import (
     Curve,
     PreparedPoint,
     bytes_from_point,
@@ -22,9 +22,9 @@ from ellipticcurves.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.curves.sec_point import _mult_sec, mult_pub_key
-from ellipticcurves.exceptions import EllipticCurvesTypeError, EllipticCurvesValueError
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.curves.sec_point import _mult_sec, mult_pub_key
+from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 from tests import b58encode, needs_bindings
 
 # test curves: very low cardinality
@@ -81,28 +81,28 @@ def test_octets2point() -> None:
         assert Q_point == Q
 
         Q_bytes = b"\x01" + b"\x01" * ec.p_size
-        with pytest.raises(EllipticCurvesValueError, match="not a point: "):
+        with pytest.raises(BTClibEccValueError, match="not a point: "):
             point_from_octets(Q_bytes, ec)
 
         Q_bytes = b"\x01" + b"\x01" * 2 * ec.p_size
-        with pytest.raises(EllipticCurvesValueError, match="not a point: "):
+        with pytest.raises(BTClibEccValueError, match="not a point: "):
             point_from_octets(Q_bytes, ec)
 
         Q_bytes = b"\x04" + b"\x01" * ec.p_size
         with pytest.raises(
-            EllipticCurvesValueError, match="invalid size for uncompressed point: "
+            BTClibEccValueError, match="invalid size for uncompressed point: "
         ):
             point_from_octets(Q_bytes, ec)
 
         Q_bytes = b"\x02" + b"\x01" * 2 * ec.p_size
         with pytest.raises(
-            EllipticCurvesValueError, match="invalid size for compressed point: "
+            BTClibEccValueError, match="invalid size for compressed point: "
         ):
             point_from_octets(Q_bytes, ec)
 
         Q_bytes = b"\x03" + b"\x01" * 2 * ec.p_size
         with pytest.raises(
-            EllipticCurvesValueError, match="invalid size for compressed point: "
+            BTClibEccValueError, match="invalid size for compressed point: "
         ):
             point_from_octets(Q_bytes, ec)
 
@@ -110,13 +110,13 @@ def test_octets2point() -> None:
     ec = CURVES["secp256k1"]
     x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
     xstr = format(x_Q, "32X")
-    with pytest.raises(EllipticCurvesValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
         point_from_octets(f"03{xstr}", ec)
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve: "):
+    with pytest.raises(BTClibEccValueError, match="point not on curve: "):
         point_from_octets("04" + 2 * xstr, ec)
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve"):
+    with pytest.raises(BTClibEccValueError, match="point not on curve"):
         bytes_from_point((x_Q, x_Q), ec)
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve"):
+    with pytest.raises(BTClibEccValueError, match="point not on curve"):
         bytes_from_point((x_Q, x_Q), ec, False)
 
 
@@ -141,12 +141,12 @@ def test_hybrid_prefixes_are_admitted_only_when_asked() -> None:
     assert point_from_octets(prefix + body, ec, hybrid=True) == Q
     assert point_from_octets((prefix + body).hex(), ec, hybrid=True) == Q
 
-    with pytest.raises(EllipticCurvesValueError, match="not a point: prefix "):
+    with pytest.raises(BTClibEccValueError, match="not a point: prefix "):
         point_from_octets(prefix + body, ec)
 
     # the prefix repeats the parity of the y that follows it, so the two
     # can contradict each other, and then it is not a point
-    with pytest.raises(EllipticCurvesValueError, match="against the hybrid prefix "):
+    with pytest.raises(BTClibEccValueError, match="against the hybrid prefix "):
         point_from_octets(mismatched + body, ec, hybrid=True)
 
     # and 0x04 does not acquire a parity rule it never had
@@ -198,7 +198,7 @@ def test_bytes_from_prv_key_int() -> None:
     for ec in (CURVES["secp256k1"], low_card_curves["ec13_11"]):
         for q in (0, ec.n):
             with pytest.raises(
-                EllipticCurvesValueError,
+                BTClibEccValueError,
                 match="no bytes representation for infinity point",
             ):
                 bytes_from_prv_key_int(q, ec)
@@ -207,7 +207,7 @@ def test_bytes_from_prv_key_int() -> None:
 def test_infinity_point_bytes() -> None:
     """Refuse to serialize the point at infinity."""
     with pytest.raises(
-        EllipticCurvesValueError, match="no bytes representation for infinity point"
+        BTClibEccValueError, match="no bytes representation for infinity point"
     ):
         bytes_from_point(INF)
 
@@ -219,7 +219,7 @@ def test_infinity_point_from_octets() -> None:
     inf_bytes += INF[0].to_bytes(curve_size, byteorder="big", signed=False)
     inf_bytes += INF[1].to_bytes(curve_size, byteorder="big", signed=False)
     with pytest.raises(
-        EllipticCurvesValueError, match="no bytes representation for infinity point"
+        BTClibEccValueError, match="no bytes representation for infinity point"
     ):
         point_from_octets(inf_bytes)
 
@@ -270,7 +270,7 @@ def test_mult_sec(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     # what the fallthrough exists to keep saying
     ec = CURVES["secp256k1"]
     x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
-    with pytest.raises(EllipticCurvesValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
         _mult_sec(b"\x02" + x_Q.to_bytes(ec.p_size, "big"), 2, ec)
 
 
@@ -286,8 +286,8 @@ def test_mult_pub_key(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
 
     The two twins it composes are asserted above; what is left is the
     public spelling's own part: every form of `PubKey`, a scalar as any
-    `Integer` and reduced mod n, and a key that is no point refused as an
-    `EllipticCurvesValueError` whichever form it arrived in.
+    `Integer` and reduced mod n, and a key that is no point refused as a
+    `BTClibEccValueError` whichever form it arrived in.
     """
     if not bindings:
         monkeypatch.setattr(curve, "_libsecp256k1_available", False)
@@ -312,12 +312,12 @@ def test_mult_pub_key(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
         (ec.G[0], ec.G[1] + 1),
         INF,
     ):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             mult_pub_key(5, not_a_point)
 
-    with pytest.raises(EllipticCurvesTypeError):
+    with pytest.raises(BTClibEccTypeError):
         mult_pub_key(1.5, Q)  # type: ignore[arg-type]
-    with pytest.raises(EllipticCurvesTypeError):
+    with pytest.raises(BTClibEccTypeError):
         mult_pub_key(5, 7)  # type: ignore[arg-type]
 
 
@@ -348,11 +348,11 @@ def test_a_scalar_is_an_int_or_its_octets_and_nothing_else() -> None:
         "mzhNe8gj7WMbGNpsRRbE59dWU27jWqmKvFsg7A4vgdAD"
     )
     for text in (b58encode(b"\x80" + q.to_bytes(32, "big") + b"\x01").decode(), xprv):
-        with pytest.raises(EllipticCurvesValueError, match="invalid hex string"):
+        with pytest.raises(BTClibEccValueError, match="invalid hex string"):
             scalar_from_prv_key(text)
 
     for out_of_range in (0, secp256k1.n):
-        with pytest.raises(EllipticCurvesValueError, match="private key not in 1..n-1"):
+        with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
             scalar_from_prv_key(out_of_range)
 
 
@@ -386,18 +386,18 @@ def test_a_public_key_is_a_point_or_its_octets_and_nothing_else() -> None:
     # never echoed -- it may be the private material issue btclib-org/btclib#143
     # is about
     for wrong_type in (q, 1.5, None):
-        with pytest.raises(EllipticCurvesTypeError, match="not a public key"):
+        with pytest.raises(BTClibEccTypeError, match="not a public key"):
             point_from_pub_key(wrong_type)  # type: ignore[arg-type]
 
     # a tuple of the right shape that is no point of the curve, and the
     # infinity point, which has no public key
     for not_a_point in ((1, 2), INF):
-        with pytest.raises(EllipticCurvesValueError, match="not a valid public key"):
+        with pytest.raises(BTClibEccValueError, match="not a valid public key"):
             point_from_pub_key(not_a_point)
 
     # octets of a declared type whose content is no point: a value error,
     # and the parse's own reason is chained under it
-    with pytest.raises(EllipticCurvesValueError, match="not a public key"):
+    with pytest.raises(BTClibEccValueError, match="not a public key"):
         point_from_pub_key(
             b58encode(b"\x80" + q.to_bytes(32, "big") + b"\x01").decode()
         )

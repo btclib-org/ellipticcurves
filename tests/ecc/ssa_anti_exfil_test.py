@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the anti-exfil protocol of `ellipticcurves.ecc.ssa`.
+"""Tests for the anti-exfil protocol of `btclib_ecc.ecc.ssa`.
 
 bitcoin-core/secp256k1#1140 proposes the same handshake for
 `schnorrsig`, carrying over the ECDSA one BlockstreamResearch/secp256k1-zkp's
@@ -18,8 +18,8 @@ from hashlib import sha1, sha256
 
 import pytest
 
-from ellipticcurves.ecc import ssa
-from ellipticcurves.exceptions import EllipticCurvesValueError
+from btclib_ecc.ecc import ssa
+from btclib_ecc.exceptions import BTClibEccValueError
 
 _PRV_KEY = bytes.fromhex("55" * 32)
 _PUB_KEY = ssa.gen_keys(_PRV_KEY)[1]
@@ -134,11 +134,11 @@ def test_rho_and_the_commitment_are_hf_len() -> None:
     over what is merely an input the signature does not match.
     """
     short = b"\x00" * 31
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         ssa.anti_exfil_host_commit(short)
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         ssa.anti_exfil_sign(_MSG, _PRV_KEY, short)
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         ssa.anti_exfil_signer_commit(_MSG, _PRV_KEY, short)
 
     commitment = ssa.anti_exfil_host_commit(_RHO)
@@ -152,7 +152,7 @@ def test_rho_and_the_commitment_are_hf_len() -> None:
     msg = sha1(b"to be signed").digest()  # noqa: S324
     rho = sha1(b"the host's randomness").digest()  # noqa: S324
     commitment = ssa.anti_exfil_host_commit(rho, sha1)
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         ssa.anti_exfil_signer_commit(msg, _PRV_KEY, _RHO, hf=sha1)
     R = ssa.anti_exfil_signer_commit(msg, _PRV_KEY, commitment, hf=sha1)
     sig = ssa.anti_exfil_sign(msg, _PRV_KEY, rho, hf=sha1)

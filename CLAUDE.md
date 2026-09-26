@@ -15,7 +15,7 @@ against.
 
 ## Architecture
 
-`src/ellipticcurves/` is the package, and it imports nothing of this
+`src/btclib_ecc/` is the package, and it imports nothing of this
 organization's other packages: it is the arithmetic they are built on,
 and `tests/imports_test.py` imports each module alone to hold that.
 `btclib-secp256k1` is an optional extra, never a dependency.
@@ -38,7 +38,7 @@ predicate declines runs the Python arithmetic of `curves/curve_group.py`,
 which is not dead code and not constant-time: it serves every other
 curve, other hash functions and caller-supplied nonces, and the suite
 validates it against the bindings, which are the authority on the
-answer. `ELLIPTICCURVES_NO_LIBSECP256K1` in the environment turns the
+answer. `BTCLIB_ECC_NO_LIBSECP256K1` in the environment turns the
 switch off from the first call.
 
 ## The primary checkout is the maintainer's
@@ -182,7 +182,7 @@ Do not use Fable unless explicitly instructed.
 - **mypy is a *local* hook shelling out to uv on purpose.** The
   mirrors-mypy hook injects `--ignore-missing-imports`, and it type
   checks in an isolated environment where the project is not installed —
-  so `import ellipticcurves` in a test would be `Any` and every assertion
+  so `import btclib_ecc` in a test would be `Any` and every assertion
   about it would pass vacuously.
 - **The version is declared once**, in `pyproject.toml`.
   `docs/source/conf.py` parses that file (not the metadata, which would

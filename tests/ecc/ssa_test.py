@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.ssa` module."""
+"""Tests for the `btclib_ecc.ecc.ssa` module."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from typing import Any, cast
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import ssa as libsecp256k1_ssa
-from ellipticcurves._utils import int_from_bits
-from ellipticcurves.alias import INF, Octets, Point, String
-from ellipticcurves.curves import (
+from btclib_ecc._libsecp256k1 import ssa as libsecp256k1_ssa
+from btclib_ecc._utils import int_from_bits
+from btclib_ecc.alias import INF, Octets, Point, String
+from btclib_ecc.curves import (
     PreparedPoint,
     bytes_from_point,
     curve_group,
@@ -22,17 +22,17 @@ from ellipticcurves.curves import (
     mult,
     secp256k1,
 )
-from ellipticcurves.curves.curve import CURVES, Curve
-from ellipticcurves.curves.curve_group import _jac_from_aff
-from ellipticcurves.ecc import second_generator, ssa
-from ellipticcurves.ecc.bip340_nonce import bip340_nonce_
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.curves.curve import CURVES, Curve
+from btclib_ecc.curves.curve_group import _jac_from_aff
+from btclib_ecc.ecc import second_generator, ssa
+from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
 )
-from ellipticcurves.hashes import reduce_to_hlen
-from ellipticcurves.number_theory import mod_inv_var
+from btclib_ecc.hashes import reduce_to_hlen
+from btclib_ecc.number_theory import mod_inv_var
 from tests import b58decode, b58encode, load_csv, needs_bindings, vector_id
 from tests.curves.curve_test import low_card_curves, no_bindings, secp256k1_bis
 
@@ -69,20 +69,20 @@ def test_signature() -> None:
     msg_fake = b"Craig Wright"
     assert not ssa.verify(msg_fake, x_Q, sig)
     err_msg = r"y_K is odd|signature verification failed"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa.assert_as_valid(msg_fake, x_Q, sig)
 
     _, x_Q_fake = ssa.gen_keys(q + 2)
     assert not ssa.verify(msg, x_Q_fake, sig)
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa.assert_as_valid(msg, x_Q_fake, sig)
 
     # a value and not a type: the point at infinity is a `Point`, and what is
     # wrong with it is which point it is (issue btclib-org/btclib#1188)
     err_msg = "not a valid public key"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_as_valid(msg, INF, sig)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.point_from_bip340pub_key(INF)
 
     sig_invalid = ssa.Sig(sig.ec.p, sig.s, check_validity=False)
@@ -92,23 +92,23 @@ def test_signature() -> None:
     # btclib-org/btclib#622): "x-coordinate not in 0..p-1" is ec.y's, reached
     # through _y_even_var, and a predicate has no such message to pass on
     err_msg = "r is not a valid x-coordinate: "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_as_valid(msg, x_Q, sig_invalid)
 
     sig_invalid = ssa.Sig(sig.r, sig.ec.p, check_validity=False)
     assert not ssa.verify(msg, x_Q, sig_invalid)
     err_msg = "scalar s not in 0..n-1: "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_as_valid(msg, x_Q, sig_invalid)
 
     # the boundary itself, not `ec.p` (a different, larger prime): `< n`
     # weakened to `<= n` would still refuse `ec.p` and miss `n` exactly
-    with pytest.raises(EllipticCurvesValueError, match="scalar s not in 0..n-1: "):
+    with pytest.raises(BTClibEccValueError, match="scalar s not in 0..n-1: "):
         ssa.Sig(sig.r, sig.ec.n)
 
     # the lower boundary too: `0 <= s` weakened to `-1 <= s` would accept
     # a scalar one below the range BIP340's own zero-lower-bound allows
-    with pytest.raises(EllipticCurvesValueError, match="scalar s not in 0..n-1: "):
+    with pytest.raises(BTClibEccValueError, match="scalar s not in 0..n-1: "):
         ssa.Sig(sig.r, -1)
 
     # `serialize`'s own default, not the constructor's: an invalid Sig
@@ -116,7 +116,7 @@ def test_signature() -> None:
     # to serialize at the default, and only there does check_validity=False
     # let it through
     sig_invalid = ssa.Sig(sig.r, sig.ec.n, sig.ec, check_validity=False)
-    with pytest.raises(EllipticCurvesValueError, match="scalar s not in 0..n-1: "):
+    with pytest.raises(BTClibEccValueError, match="scalar s not in 0..n-1: "):
         sig_invalid.serialize()
     assert sig_invalid.serialize(check_validity=False)
 
@@ -127,7 +127,7 @@ def test_signature() -> None:
     m_bytes = reduce_to_hlen(msg, hf)
     assert not ssa.verify_(m_bytes[:31], x_Q, sig)
     err_msg = r"y_K is odd|signature verification failed"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa.assert_as_valid_(m_bytes[:31], x_Q, sig)
 
     # and signing it works, giving a signature over those 31 bytes and no
@@ -138,7 +138,7 @@ def test_signature() -> None:
     assert not ssa.verify_(m_bytes, x_Q, sig_31)
 
     err_msg = "private key not in 1..n-1"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.sign(msg, 0)
 
 
@@ -205,7 +205,7 @@ def test_parse_takes_64_bytes_and_no_other_number(
     err_msg = f"invalid decoded length: {min(length, 64)} instead of 64"
     if length > 64:
         err_msg = f"{length - 64} bytes after the BIP340 signature"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.Sig.parse(truncated_or_extended, check_validity=check_validity)
 
 
@@ -243,9 +243,7 @@ def test_refusing_an_r_takes_no_square_root(
         )
 
     monkeypatch.setattr(curve_group, "mod_sqrt_var", refuse)
-    with pytest.raises(
-        EllipticCurvesValueError, match="r is not a valid x-coordinate: "
-    ):
+    with pytest.raises(BTClibEccValueError, match="r is not a valid x-coordinate: "):
         ssa.Sig(r, 1)
 
 
@@ -267,7 +265,7 @@ def test_the_sighash_type_of_a_witness_signature_is_the_callers() -> None:
     # assert_as_valid does (issue btclib-org/btclib#2170)
     for call in (ssa.verify, ssa.assert_as_valid):
         with pytest.raises(
-            EllipticCurvesValueError, match="1 bytes after the BIP340 signature"
+            BTClibEccValueError, match="1 bytes after the BIP340 signature"
         ):
             call(msg, pub_key, sig_bin + b"\x01")
 
@@ -325,10 +323,10 @@ def test_an_extended_key_is_no_longer_a_bip340_key() -> None:
     # already octets and are refused for their length. Both are what
     # dropping the union leaves -- a string reaching here is octets or
     # it is nothing
-    with pytest.raises(EllipticCurvesValueError, match="invalid hex string"):
+    with pytest.raises(BTClibEccValueError, match="invalid hex string"):
         ssa.point_from_bip340pub_key(xpub)
     err_msg = r"invalid size: 111 bytes instead of \(32, 33, 65\)"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.point_from_bip340pub_key(xpub.encode("ascii"))
 
 
@@ -369,7 +367,7 @@ def test_octets_of_no_key_size_name_every_size_there_is() -> None:
     """
     for size in (0, 31, 34, 64):
         err_msg = f"invalid size: {size} bytes instead of \\(32, 33, 65\\)"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             ssa.point_from_bip340pub_key(b"\x11" * size)
 
 
@@ -398,7 +396,7 @@ def test_low_cardinality() -> None:
             while sig is None:
                 try:
                     sig = ssa.sign(msg, q, aux, ec)
-                except EllipticCurvesRuntimeError:  # invalid zero challenge
+                except BTClibEccRuntimeError:  # invalid zero challenge
                     msg += b"\x01"
             ssa.assert_as_valid(msg, x_Q, sig)
             for k in range(1, ec.n // 2):  # all possible ephemeral keys
@@ -408,10 +406,10 @@ def test_low_cardinality() -> None:
 
                     if e == 0:
                         err_msg = "invalid zero challenge"
-                        with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+                        with pytest.raises(BTClibEccRuntimeError, match=err_msg):
                             ssa._sign_(e, q_fixed, k_fixed, r, ec)
                         # no public key can be recovered
-                        with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+                        with pytest.raises(BTClibEccRuntimeError, match=err_msg):
                             ssa._recover_pub_key_(e, r, s, ec)
 
                         # if e == 0 then the sig is always valid
@@ -429,7 +427,7 @@ def test_low_cardinality() -> None:
                         # invalid signature must raise
                         err_msg = r"y_K is odd|INF has no y-coordinate|signature verification failed"
                         with pytest.raises(
-                            (EllipticCurvesRuntimeError, EllipticCurvesValueError),
+                            (BTClibEccRuntimeError, BTClibEccValueError),
                             match=err_msg,
                         ):
                             ssa._assert_as_valid_(
@@ -455,7 +453,7 @@ def test_assert_as_valid_rejects_the_odd_y_twin_of_a_correct_k() -> None:
     e = 5
 
     s_prime = (ec.n - k + e * q) % ec.n
-    with pytest.raises(EllipticCurvesRuntimeError, match="y_K is odd"):
+    with pytest.raises(BTClibEccRuntimeError, match="y_K is odd"):
         ssa._assert_as_valid_(e, QJ, r, s_prime, ec, ec._fixed_points)
 
 
@@ -579,7 +577,7 @@ def test_batch_validation() -> None:
     Qs: list[int] = []
     sigs: list[ssa.Sig] = []
     err_msg = "no signatures provided"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(ms, Qs, sigs)
     assert not ssa.batch_verify(ms, Qs, sigs)
 
@@ -599,14 +597,14 @@ def test_batch_validation() -> None:
     sigs.append(sigs[1])
     Qs.append(Qs[0])
     err_msg = "signature verification failed"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa.assert_batch_as_valid(ms, Qs, sigs)
     assert not ssa.batch_verify(ms, Qs, sigs)
     sigs[-1] = sigs[0]  # valid again
 
     ms.append(ms[0])  # add extra message
     err_msg = "mismatch between number of pub_keys "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(ms, Qs, sigs)
     assert not ssa.batch_verify(ms, Qs, sigs)
     ms.pop()  # valid again
@@ -615,13 +613,13 @@ def test_batch_validation() -> None:
     # weakened to `>` would let this one through
     short_ms = ms[:-1]
     err_msg = "mismatch between number of pub_keys "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(short_ms, Qs, sigs)
     assert not ssa.batch_verify(short_ms, Qs, sigs)
 
     sigs.append(sigs[0])  # add extra sig
     err_msg = "mismatch between number of pub_keys "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(ms, Qs, sigs)
     assert not ssa.batch_verify(ms, Qs, sigs)
     sigs.pop()  # valid again
@@ -630,7 +628,7 @@ def test_batch_validation() -> None:
         sigs[0].r, sigs[0].s, CURVES["secp256r1"], check_validity=False
     )  # different curve
     err_msg = "not the same curve for all signatures"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(ms, Qs, sigs)
     assert not ssa.batch_verify(ms, Qs, sigs)
     sigs[0] = ssa.Sig(sigs[0].r, sigs[0].s, CURVES["secp256k1"])  # same curve again
@@ -642,7 +640,7 @@ def test_batch_validation() -> None:
     assert ssa.batch_verify_(ms, Qs, sigs)
     ms[0] = ms[0][:-1]
     err_msg = "signature verification failed"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa.assert_batch_as_valid_(ms, Qs, sigs)
     assert not ssa.batch_verify_(ms, Qs, sigs)
 
@@ -662,10 +660,10 @@ def test_one_message_is_not_a_batch_of_them() -> None:
     sig = ssa.sign(m, q, aux)
 
     for batch_call in (ssa.assert_batch_as_valid, ssa.assert_batch_as_valid_):
-        with pytest.raises(EllipticCurvesTypeError, match="invalid msgs type"):
+        with pytest.raises(BTClibEccTypeError, match="invalid msgs type"):
             batch_call(cast("Any", m), [Q], [sig])
     for verify_call in (ssa.batch_verify, ssa.batch_verify_):
-        with pytest.raises(EllipticCurvesTypeError, match="invalid msgs type"):
+        with pytest.raises(BTClibEccTypeError, match="invalid msgs type"):
             verify_call(cast("Any", m), [Q], [sig])
 
 
@@ -731,7 +729,7 @@ def test_batch_and_single_verification_agree_about_a_non_canonical_s(
     assert not ssa.verify(msgs[-1], Qs[-1], sigs[-1])
     assert not ssa.batch_verify(msgs, Qs, sigs)
     err_msg = "scalar s not in 0..n-1: "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(msgs, Qs, sigs)
 
 
@@ -767,9 +765,7 @@ def test_batch_validation_on_the_python_path(monkeypatch: pytest.MonkeyPatch) ->
     # one signature belonging to another message of the same batch: the
     # sum misses, and misses on either arithmetic
     sigs[-1] = sigs[0]
-    with pytest.raises(
-        EllipticCurvesRuntimeError, match="signature verification failed"
-    ):
+    with pytest.raises(BTClibEccRuntimeError, match="signature verification failed"):
         ssa.assert_batch_as_valid(msgs, Qs, sigs)
 
 
@@ -809,9 +805,9 @@ def test_a_batch_refuses_a_bad_key_in_the_lift_s_words(
     ssa.assert_batch_as_valid_(msgs, Qs, sigs)
 
     for x in (ec.p, ec.p + 1, 0xDEADBEEF00000000, 7):
-        with pytest.raises(EllipticCurvesValueError) as batched:
+        with pytest.raises(BTClibEccValueError) as batched:
             ssa.assert_batch_as_valid_(msgs, [Qs[0], x], sigs)
-        with pytest.raises(EllipticCurvesValueError) as lifted:
+        with pytest.raises(BTClibEccValueError) as lifted:
             ec.y_var(x)
         assert str(batched.value) == str(lifted.value)
 
@@ -826,7 +822,7 @@ def test_musig1() -> None:
     revision (2018-05-20, after the flaw was published as ePrint
     2018/417) added a round in front, committing to each nonce before
     revealing it. That three-round scheme is MuSig1, reproduced below.
-    `ellipticcurves.ecc.musig2` is the two-round scheme that replaced it in
+    `btclib_ecc.ecc.musig2` is the two-round scheme that replaced it in
     turn, buying the round back with a pair of nonce points rather than
     a commitment.
 
@@ -1267,7 +1263,7 @@ def test_sign_aux_size() -> None:
     """Nonce entropy is 32 bytes, or omitted.
 
     bytes_from_octets enforces it at this package's own boundary, ahead of the
-    bindings' own ValueError, so callers get an EllipticCurvesValueError, and
+    bindings' own ValueError, so callers get a BTClibEccValueError, and
     b"" is a size error rather than a request for fresh randomness.
     """
     msg_hash = reduce_to_hlen(b"Satoshi Nakamoto")
@@ -1278,7 +1274,7 @@ def test_sign_aux_size() -> None:
 
     for aux in (b"", b"\x00" * 31, b"\x00" * 33):
         err_msg = f"invalid size: {len(aux)} bytes instead of 32"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             ssa.sign_(msg_hash, q, aux)
 
 
@@ -1291,7 +1287,7 @@ def test_zero_challenge() -> None:
     """
     ec = low_card_curves["ec13_11"]
     msg_hash = (11).to_bytes(32, "big")
-    with pytest.raises(EllipticCurvesRuntimeError, match="invalid zero challenge"):
+    with pytest.raises(BTClibEccRuntimeError, match="invalid zero challenge"):
         ssa.challenge_(msg_hash, 1, 1, ec, hf)
 
 
@@ -1310,11 +1306,11 @@ def test_recover_infinity_pub_key(monkeypatch: pytest.MonkeyPatch) -> None:
     is exactly the case, u being n - e1 and v being e1 here.
     """
     err_msg = r"invalid \(INF\) key"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa._recover_pub_key_(1, secp256k1.G[0], 1, secp256k1)
 
     no_bindings(monkeypatch)
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa._recover_pub_key_(1, secp256k1.G[0], 1, secp256k1)
 
 
@@ -1362,20 +1358,20 @@ def test_a_bad_hf_raises_rather_than_answering_about_the_signature() -> None:
     assert ssa.verify_(msg_hash, x_Q, sig)
 
     err_msg = "not a hash function"
-    with pytest.raises(EllipticCurvesTypeError, match=err_msg):
+    with pytest.raises(BTClibEccTypeError, match=err_msg):
         ssa.verify_(msg_hash, x_Q, sig, hf())  # type: ignore[arg-type]
-    with pytest.raises(EllipticCurvesTypeError, match=err_msg):
+    with pytest.raises(BTClibEccTypeError, match=err_msg):
         ssa.assert_as_valid_(msg_hash, x_Q, sig, hf())  # type: ignore[arg-type]
-    with pytest.raises(EllipticCurvesTypeError, match=err_msg):
+    with pytest.raises(BTClibEccTypeError, match=err_msg):
         ssa.verify(msg, x_Q, sig, hf())  # type: ignore[arg-type]
 
     # the batch, at both sizes: one signature shortcuts to assert_as_valid_
     # and two or more take the multi-scalar equation
     assert ssa.batch_verify_([msg_hash], [x_Q], [sig])
     for size in (1, 2):
-        with pytest.raises(EllipticCurvesTypeError, match=err_msg):
+        with pytest.raises(BTClibEccTypeError, match=err_msg):
             ssa.batch_verify_([msg_hash] * size, [x_Q] * size, [sig] * size, hf())  # type: ignore[arg-type]
-        with pytest.raises(EllipticCurvesTypeError, match=err_msg):
+        with pytest.raises(BTClibEccTypeError, match=err_msg):
             ssa.assert_batch_as_valid_(
                 [msg_hash] * size,
                 [x_Q] * size,
@@ -1443,9 +1439,9 @@ def test_a_key_that_is_no_x_coordinate_is_refused_in_the_lift_s_words(
     assert ssa.verify_(msg, x_Q, sig)
 
     for x in (ec.p, ec.p + 1, 0xDEADBEEF00000000, 7):
-        with pytest.raises(EllipticCurvesValueError) as verified:
+        with pytest.raises(BTClibEccValueError) as verified:
             ssa.assert_as_valid_(msg, x, sig)
-        with pytest.raises(EllipticCurvesValueError) as lifted:
+        with pytest.raises(BTClibEccValueError) as lifted:
             ec.y_var(x)
         assert str(verified.value) == str(lifted.value)
 
@@ -1521,7 +1517,7 @@ def test_a_wiped_signer_refuses_rather_than_signing_with_the_zeros() -> None:
     signer = ssa.Signer(prv_key)
     assert signer.sign_(msg_hash)
     signer.wipe()
-    with pytest.raises(EllipticCurvesValueError, match="the signer is wiped"):
+    with pytest.raises(BTClibEccValueError, match="the signer is wiped"):
         signer.sign_(msg_hash)
     # idempotent, as `close` is on the signer contract
     signer.wipe()
@@ -1533,14 +1529,14 @@ def test_a_wiped_signer_refuses_rather_than_signing_with_the_zeros() -> None:
 
     with ssa.Signer(prv_key) as block_signer:
         assert block_signer.sign_(msg_hash)
-    with pytest.raises(EllipticCurvesValueError, match="the signer is wiped"):
+    with pytest.raises(BTClibEccValueError, match="the signer is wiped"):
         block_signer.sign_(msg_hash)
 
     # and the block wipes on the way out of an exception too
     raising = ssa.Signer(prv_key)
     with pytest.raises(ZeroDivisionError), raising:
         _ = 1 / 0
-    with pytest.raises(EllipticCurvesValueError, match="the signer is wiped"):
+    with pytest.raises(BTClibEccValueError, match="the signer is wiped"):
         raising.sign_(msg_hash)
 
 
@@ -1551,11 +1547,11 @@ def test_a_signer_refuses_what_sign_refuses() -> None:
     first signature -- which is the only place a caller could hear it,
     the keypair being built here.
     """
-    with pytest.raises(EllipticCurvesValueError, match="private key not in 1..n-1"):
+    with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         ssa.Signer(0)
-    with pytest.raises(EllipticCurvesValueError, match="private key not in 1..n-1"):
+    with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         ssa.Signer(secp256k1.n)
-    with pytest.raises(EllipticCurvesTypeError):
+    with pytest.raises(BTClibEccTypeError):
         ssa.Signer(0x1234567890ABCDEF, secp256k1, "not a hash function")  # type: ignore[arg-type]
 
 
@@ -1641,7 +1637,7 @@ def test_the_py_arm_refuses_a_signature_that_does_not_verify() -> None:
     """
 
     def refuse(*_: Any, **__: Any) -> None:
-        raise EllipticCurvesRuntimeError("signature verification failed")
+        raise BTClibEccRuntimeError("signature verification failed")
 
     prv_key = 0x1234567890ABCDEF
     msg = b"a message whose check is made to fail"
@@ -1651,14 +1647,10 @@ def test_the_py_arm_refuses_a_signature_that_does_not_verify() -> None:
         patched.setattr(ssa, "_libsecp256k1_serves", lambda *_: False)
         unchecked = ssa.sign(msg, prv_key, aux, verify=False)
         patched.setattr(ssa, "_assert_as_valid_", refuse)
-        with pytest.raises(
-            EllipticCurvesRuntimeError, match="does not verify"
-        ) as plain:
+        with pytest.raises(BTClibEccRuntimeError, match="does not verify") as plain:
             ssa.sign(msg, prv_key, aux)
         assert str(plain.value.__cause__) == "signature verification failed"
-        with pytest.raises(
-            EllipticCurvesRuntimeError, match="does not verify"
-        ) as committed:
+        with pytest.raises(BTClibEccRuntimeError, match="does not verify") as committed:
             ssa.sign(msg, prv_key, aux, commit=b"a commitment")
         assert str(committed.value.__cause__) == "signature verification failed"
         # and the flag is read: the same substitution is not reached,
@@ -1695,7 +1687,7 @@ def test_the_two_arms_answer_the_same_signature_and_the_same_refusal(
     point was computed leaves behind -- which has no y to answer with
     and comes back as a `ValueError`. Both have to arrive as the one
     sentence, and the second is the one a clause naming only
-    `EllipticCurvesRuntimeError` lets through.
+    `BTClibEccRuntimeError` lets through.
 
     Marked for the bindings because the delegated row is what the Python
     one is compared against; without them both rows would be the Python
@@ -1713,7 +1705,7 @@ def test_the_two_arms_answer_the_same_signature_and_the_same_refusal(
         )
 
     def refusal() -> tuple[Any, ...]:
-        with pytest.raises(EllipticCurvesRuntimeError) as refused:
+        with pytest.raises(BTClibEccRuntimeError) as refused:
             ssa.sign(msg, prv_key, aux)
         return type(refused.value), str(refused.value)
 
@@ -1763,7 +1755,7 @@ def test_a_signer_refuses_under_the_same_sentence(
 
     with (
         ssa.Signer(0x1234567890ABCDEF) as signer,
-        pytest.raises(EllipticCurvesRuntimeError, match="does not verify"),
+        pytest.raises(BTClibEccRuntimeError, match="does not verify"),
     ):
         signer.sign(b"a message whose check is made to fail")
 
@@ -1789,21 +1781,21 @@ def test_verify_raises_on_a_structurally_invalid_signature_or_key() -> None:
         assert call(m, x_Q, s)
 
         # sixty-three and sixty-five octets cannot be a BIP340 signature
-        with pytest.raises(EllipticCurvesValueError, match="invalid decoded length"):
+        with pytest.raises(BTClibEccValueError, match="invalid decoded length"):
             call(m, x_Q, s[:-1])
-        with pytest.raises(EllipticCurvesValueError, match="1 bytes after"):
+        with pytest.raises(BTClibEccValueError, match="1 bytes after"):
             call(m, x_Q, s + b"\x00")
 
         # thirty-one octets cannot be a BIP340 public key, and neither can
         # text that is not hex at all
-        with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+        with pytest.raises(BTClibEccValueError, match="invalid size"):
             call(m, "11" * 31, s)
-        with pytest.raises(EllipticCurvesValueError, match="invalid hex string"):
+        with pytest.raises(BTClibEccValueError, match="invalid hex string"):
             call(m, "zz", s)
 
         # None is refused as a type rather than answered about, unaffected
         # by this issue and true before and after it
-        with pytest.raises(EllipticCurvesTypeError):
+        with pytest.raises(BTClibEccTypeError):
             call(m, x_Q, None)  # type: ignore[arg-type]
 
 
@@ -1856,9 +1848,9 @@ def test_batch_verify_raises_on_a_structurally_invalid_pub_key() -> None:
         (ssa.batch_verify, [msg], [sig]),
         (ssa.batch_verify_, [msg_hash], [sig_hash]),
     ):
-        with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+        with pytest.raises(BTClibEccValueError, match="invalid size"):
             call(m, ["11" * 31], s)
-        with pytest.raises(EllipticCurvesValueError, match="invalid hex string"):
+        with pytest.raises(BTClibEccValueError, match="invalid hex string"):
             call(m, ["zz"], s)
 
     # still False: a key that does not lift is a well-formed one that is

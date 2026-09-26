@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for `ellipticcurves.ecc.rangeproof` against the proofs zkp publishes.
+"""Tests for `btclib_ecc.ecc.rangeproof` against the proofs zkp publishes.
 
 The vectors are the C arrays of libsecp256k1-zkp's own
 `src/modules/rangeproof/tests_impl.h`, with the blinding factor, the
@@ -44,15 +44,15 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.curves import mult, secp256k1
-from ellipticcurves.ecc.pedersen import (
+from btclib_ecc.curves import mult, secp256k1
+from btclib_ecc.ecc.pedersen import (
     _point_from_x,
     bytes_from_commitment,
     commit,
     commitment_from_octets,
     second_generator,
 )
-from ellipticcurves.ecc.rangeproof import RangeProof, rewind, verify
+from btclib_ecc.ecc.rangeproof import RangeProof, rewind, verify
 from tests import load, vector_id
 
 # the generator every commitment and every proof below is made under:

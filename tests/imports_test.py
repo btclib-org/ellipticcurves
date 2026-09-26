@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the import graph of the `ellipticcurves` package.
+"""Tests for the import graph of the `btclib_ecc` package.
 
 Every module must be importable *first*, with no other module of this
 package in sys.modules yet. Nothing else in the suite establishes that: a
@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-import ellipticcurves
+import btclib_ecc
 from tests import module_names
 
 if TYPE_CHECKING:
@@ -41,10 +41,10 @@ _ROOT = Path(__file__).resolve().parents[1]
 def _is_ours(name: str) -> bool:
     """Answer whether a dotted name is this package or one of its modules.
 
-    `ellipticcurves` and not a bare `startswith`, which would also take in
+    `btclib_ecc` and not a bare `startswith`, which would also take in
     a sibling distribution whose name merely begins the same way.
     """
-    return name == "ellipticcurves" or name.startswith("ellipticcurves.")
+    return name == "btclib_ecc" or name.startswith("btclib_ecc.")
 
 
 def loaded_modules() -> list[str]:
@@ -113,7 +113,7 @@ def test_the_tests_package_imports_no_submodule() -> None:
     every module that asks it nothing.
     """
     loaded = _loaded_after_importing("tests")
-    assert [m for m in loaded if _is_ours(m)] == ["ellipticcurves"]
+    assert [m for m in loaded if _is_ours(m)] == ["btclib_ecc"]
 
 
 # what is heavier than the stdlib basics, and `btclib`, which builds on this
@@ -138,46 +138,46 @@ def test_no_module_reaches_above_the_package(module_name: str) -> None:
 def _loaded_within(entry_point: str) -> set[str]:
     """Return the modules of this package one import loads, the root aside."""
     return {m for m in _loaded_after_importing(entry_point) if _is_ours(m)} - {
-        "ellipticcurves"
+        "btclib_ecc"
     }
 
 
 def test_curves_stays_stdlib_light() -> None:
-    """`ellipticcurves.curves` loads the arithmetic and the substrate alone.
+    """`btclib_ecc.curves` loads the arithmetic and the substrate alone.
 
     Subset rather than equal: a new edge into the package is the defect
     this exists to catch, and a removed one is not. Narrower than the
     package: it is the curve's own arithmetic, and its docstring states
     "Nothing here knows what a signature is", so `ecc` is out of it.
     """
-    assert _loaded_within("ellipticcurves.curves") <= {
-        "ellipticcurves._libsecp256k1",
-        "ellipticcurves._utils",
-        "ellipticcurves.alias",
-        "ellipticcurves.curves",
-        "ellipticcurves.curves.curve",
-        "ellipticcurves.curves.curve_group",
-        "ellipticcurves.curves.curve_group_2",
-        "ellipticcurves.curves.curve_group_f",
-        "ellipticcurves.curves.sec_point",
-        "ellipticcurves.exceptions",
-        "ellipticcurves.number_theory",
+    assert _loaded_within("btclib_ecc.curves") <= {
+        "btclib_ecc._libsecp256k1",
+        "btclib_ecc._utils",
+        "btclib_ecc.alias",
+        "btclib_ecc.curves",
+        "btclib_ecc.curves.curve",
+        "btclib_ecc.curves.curve_group",
+        "btclib_ecc.curves.curve_group_2",
+        "btclib_ecc.curves.curve_group_f",
+        "btclib_ecc.curves.sec_point",
+        "btclib_ecc.exceptions",
+        "btclib_ecc.number_theory",
     }
 
 
 def test_ecc_loads_every_scheme() -> None:
-    """`ellipticcurves.ecc` binds each scheme it publishes, eagerly.
+    """`btclib_ecc.ecc` binds each scheme it publishes, eagerly.
 
     Its `__init__` imports every module `__all__` names, which is what
-    lets `ellipticcurves.ecc.dsa` answer after `import ellipticcurves.ecc`
+    lets `btclib_ecc.ecc.dsa` answer after `import btclib_ecc.ecc`
     alone; the heavy modules are asked of it by the test above.
     """
-    loaded = _loaded_within("ellipticcurves.ecc")
+    loaded = _loaded_within("btclib_ecc.ecc")
     schemes = {
-        f"ellipticcurves.ecc.{name}"
-        for name in importlib.import_module("ellipticcurves.ecc").__all__
+        f"btclib_ecc.ecc.{name}"
+        for name in importlib.import_module("btclib_ecc.ecc").__all__
         if isinstance(
-            getattr(importlib.import_module("ellipticcurves.ecc"), name), ModuleType
+            getattr(importlib.import_module("btclib_ecc.ecc"), name), ModuleType
         )
     }
     assert schemes
@@ -188,7 +188,7 @@ def test_ecc_loads_every_scheme() -> None:
 # beside the standard library: the typing backport, the bindings, whose
 # absence `_libsecp256k1` answers for, and the package itself
 _ALLOWED_THIRD_PARTY = frozenset(
-    {"typing_extensions", "btclib_secp256k1", "ellipticcurves"}
+    {"typing_extensions", "btclib_secp256k1", "btclib_ecc"}
 )
 
 
@@ -202,9 +202,7 @@ def _top_level_imports(source: str) -> set[str]:
         if isinstance(node, ast.Import):
             names.update(alias.name.split(".")[0] for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            names.add(
-                "ellipticcurves" if node.level else (node.module or "").split(".")[0]
-            )
+            names.add("btclib_ecc" if node.level else (node.module or "").split(".")[0])
     return names
 
 
@@ -224,7 +222,7 @@ def test_the_import_scan_finds_a_planted_import() -> None:
         "hashlib",
         "btclib",
         "btclib_wallet",
-        "ellipticcurves",
+        "btclib_ecc",
         "typing_extensions",
     }
     assert _outside(names) == ["btclib", "btclib_wallet"]
@@ -237,7 +235,7 @@ def test_no_module_imports_outside_the_stdlib_and_the_bindings() -> None:
     import inside a function or behind `TYPE_CHECKING` is one no
     interpreter runs at import, and it would still fail the day it ran.
     """
-    root = Path(ellipticcurves.__path__[0])
+    root = Path(btclib_ecc.__path__[0])
     found = {
         path.relative_to(root).as_posix(): _outside(
             _top_level_imports(path.read_text(encoding="utf-8"))

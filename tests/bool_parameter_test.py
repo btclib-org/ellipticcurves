@@ -39,7 +39,7 @@ the one that asked.
 The two tests below are that line, one each:
 
 - a kind refuses `"no"`, `0`, `1` and (where the annotation does not
-  declare it) `None`, with an `EllipticCurvesTypeError`
+  declare it) `None`, with a `BTClibEccTypeError`
 - a truth **accepts** them, on a fixture the flag's `True` accepts: a
   truth that starts refusing fails here, and the entry has to move
   rather than the test being edited
@@ -62,21 +62,21 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import INSTALLED
-from ellipticcurves.curves.curve import (
+from btclib_ecc._libsecp256k1 import INSTALLED
+from btclib_ecc.curves.curve import (
     Curve,
     SEC2v1_params2,
     set_libsecp256k1_serving,
 )
-from ellipticcurves.curves.sec_point import (
+from btclib_ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
     point_from_octets,
 )
-from ellipticcurves.ecc import dsa, frost, musig2, ssa
-from ellipticcurves.exceptions import EllipticCurvesTypeError
+from btclib_ecc.ecc import dsa, frost, musig2, ssa
+from btclib_ecc.exceptions import BTClibEccTypeError
 
-_PACKAGE = Path(__file__).parents[1] / "src" / "ellipticcurves"
+_PACKAGE = Path(__file__).parents[1] / "src" / "btclib_ecc"
 
 # `check_validity` is the one name the walk subtracts, and this is the
 # reason it may: it is a convention over many signatures rather than a
@@ -137,25 +137,25 @@ class _Case:
 _KINDS = (
     # `compressed` chooses which encoding of the public key is computed
     _Case(
-        "ellipticcurves.curves.sec_point.bytes_from_point",
+        "btclib_ecc.curves.sec_point.bytes_from_point",
         "compressed",
         bytes_from_point,
         {"Q": _PUB_KEY},
     ),
     _Case(
-        "ellipticcurves.curves.sec_point.bytes_from_prv_key_int",
+        "btclib_ecc.curves.sec_point.bytes_from_prv_key_int",
         "compressed",
         bytes_from_prv_key_int,
         {"prv_key_int": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.recover_sec_",
+        "btclib_ecc.ecc.dsa.recover_sec_",
         "compressed",
         dsa.recover_sec_,
         {"key_id": _KEY_ID, "msg_hash": _MSG_HASH, "sig": _RECOVERABLE},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.recover_sec",
+        "btclib_ecc.ecc.dsa.recover_sec",
         "compressed",
         dsa.recover_sec,
         {"key_id": _KEY_ID, "msg": _MSG, "sig": _RECOVERABLE},
@@ -163,67 +163,67 @@ _KINDS = (
     # `lower_s` chooses which of the two signatures is returned, `grind`
     # whether the nonce is searched until r is short
     _Case(
-        "ellipticcurves.ecc.dsa.sign_",
+        "btclib_ecc.ecc.dsa.sign_",
         "lower_s",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign",
+        "btclib_ecc.ecc.dsa.sign",
         "lower_s",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign_recoverable_",
+        "btclib_ecc.ecc.dsa.sign_recoverable_",
         "lower_s",
         dsa.sign_recoverable_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign_recoverable",
+        "btclib_ecc.ecc.dsa.sign_recoverable",
         "lower_s",
         dsa.sign_recoverable,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.anti_exfil_sign",
+        "btclib_ecc.ecc.dsa.anti_exfil_sign",
         "lower_s",
         dsa.anti_exfil_sign,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign_",
+        "btclib_ecc.ecc.dsa.sign_",
         "grind",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign",
+        "btclib_ecc.ecc.dsa.sign",
         "grind",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.Signer.sign_",
+        "btclib_ecc.ecc.dsa.Signer.sign_",
         "grind",
         dsa.Signer(_PRV_KEY).sign_,
         {"msg_hash": _MSG_HASH},
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.Signer.sign",
+        "btclib_ecc.ecc.dsa.Signer.sign",
         "grind",
         dsa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
     ),
     _Case(
-        "ellipticcurves.ecc.musig2.apply_tweak",
+        "btclib_ecc.ecc.musig2.apply_tweak",
         "is_xonly",
         musig2.apply_tweak,
         {"key_agg_ctx": _KEY_AGG, "tweak": b"\x01" * 32},
     ),
     _Case(
-        "ellipticcurves.ecc.frost.apply_tweak",
+        "btclib_ecc.ecc.frost.apply_tweak",
         "is_xonly",
         frost.apply_tweak,
         {"tweak_ctx": _FROST_TWEAK_CTX, "tweak": b"\x01" * 32},
@@ -235,7 +235,7 @@ _KINDS = (
     # other and calling it the one. `valid=INSTALLED`, so that the call
     # this file makes leaves the state an installation is normally in
     _Case(
-        "ellipticcurves.curves.curve.set_libsecp256k1_serving",
+        "btclib_ecc.curves.curve.set_libsecp256k1_serving",
         "serving",
         set_libsecp256k1_serving,
         {},
@@ -245,7 +245,7 @@ _KINDS = (
     # is here for the other half of the line: its `True` is the
     # permissive value, the refusal it was written to make, waived
     _Case(
-        "ellipticcurves.curves.sec_point.point_from_octets",
+        "btclib_ecc.curves.sec_point.point_from_octets",
         "hybrid",
         point_from_octets,
         {"pub_key": _SEC},
@@ -256,7 +256,7 @@ _KINDS = (
 
 _TRUTHS = (
     _Case(
-        "ellipticcurves.curves.curve.Curve.__init__",
+        "btclib_ecc.curves.curve.Curve.__init__",
         "weakness_check",
         Curve,
         _SMALL_CURVE,
@@ -264,14 +264,14 @@ _TRUTHS = (
         " check, and no parameter of the curve built",
     ),
     _Case(
-        "ellipticcurves.curves.curve.Curve.__init__",
+        "btclib_ecc.curves.curve.Curve.__init__",
         "order_check",
         Curve,
         _SMALL_CURVE,
         reason="whether n*G is verified to be the point at infinity",
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.Sig.parse",
+        "btclib_ecc.ecc.dsa.Sig.parse",
         "strict",
         dsa.Sig.parse,
         {"data": _DER_SIG},
@@ -280,7 +280,7 @@ _TRUTHS = (
         " parsed out of what both readings accept is one signature",
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign_",
+        "btclib_ecc.ecc.dsa.sign_",
         "verify",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
@@ -289,28 +289,28 @@ _TRUTHS = (
         " verification of what has already been computed",
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.sign",
+        "btclib_ecc.ecc.dsa.sign",
         "verify",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.Signer.sign_",
+        "btclib_ecc.ecc.dsa.Signer.sign_",
         "verify",
         dsa.Signer(_PRV_KEY).sign_,
         {"msg_hash": _MSG_HASH},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ellipticcurves.ecc.dsa.Signer.sign",
+        "btclib_ecc.ecc.dsa.Signer.sign",
         "verify",
         dsa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ellipticcurves.ecc.ssa.sign_",
+        "btclib_ecc.ecc.ssa.sign_",
         "verify",
         ssa.sign_,
         {"msg": _MSG, "prv_key": _PRV_KEY},
@@ -319,21 +319,21 @@ _TRUTHS = (
         " verification of what has already been computed",
     ),
     _Case(
-        "ellipticcurves.ecc.ssa.sign",
+        "btclib_ecc.ecc.ssa.sign",
         "verify",
         ssa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ellipticcurves.ecc.ssa.Signer.sign_",
+        "btclib_ecc.ecc.ssa.Signer.sign_",
         "verify",
         ssa.Signer(_PRV_KEY).sign_,
         {"msg": _MSG},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ellipticcurves.ecc.ssa.Signer.sign",
+        "btclib_ecc.ecc.ssa.Signer.sign",
         "verify",
         ssa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
@@ -411,7 +411,7 @@ def test_a_kind_refuses_a_non_bool(case: _Case) -> None:
     """
     wrong = _WRONG_TYPES if case.optional else (*_WRONG_TYPES, None)
     for value in wrong:
-        with pytest.raises(EllipticCurvesTypeError, match=f"invalid {case.flag} type"):
+        with pytest.raises(BTClibEccTypeError, match=f"invalid {case.flag} type"):
             case.function(**case.args, **{case.flag: value})
 
 
@@ -432,7 +432,7 @@ def test_a_truth_is_read_for_its_truth(case: _Case) -> None:
 def test_every_bool_parameter_is_classified() -> None:
     """No third table: a flag is a kind or a truth, and the walk says so.
 
-    A parameter added anywhere under `src/ellipticcurves/` fails here until
+    A parameter added anywhere under `src/btclib_ecc/` fails here until
     somebody decides which of the two it is -- which is the decision this file
     exists to keep from being made by default.
     """
@@ -451,12 +451,12 @@ def test_the_walk_reaches_what_it_claims() -> None:
     """
     found = _bool_parameters()
     # a function, a method, and a method of a class nested in a module
-    assert ("ellipticcurves.ecc.dsa.sign", "lower_s") in found
-    assert ("ellipticcurves.ecc.dsa.Signer.sign", "grind") in found
-    assert ("ellipticcurves.curves.curve.Curve.__init__", "order_check") in found
+    assert ("btclib_ecc.ecc.dsa.sign", "lower_s") in found
+    assert ("btclib_ecc.ecc.dsa.Signer.sign", "grind") in found
+    assert ("btclib_ecc.curves.curve.Curve.__init__", "order_check") in found
 
     # the convention with a file of its own
     assert not [pair for pair in found if pair[1] == "check_validity"]
     # a private function, and a parameter of another type
-    assert ("ellipticcurves.ecc.musig2._flag", "is_xonly") not in found
-    assert ("ellipticcurves.hashes.reduce_to_hlen", "hf") not in found
+    assert ("btclib_ecc.ecc.musig2._flag", "is_xonly") not in found
+    assert ("btclib_ecc.hashes.reduce_to_hlen", "hf") not in found

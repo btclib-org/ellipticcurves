@@ -54,7 +54,7 @@ path `SECURITY.md` publishes as not constant-time, under an adversary for
 the first time.
 
 The SHAKE files arrive through an adapter, `_PinnedXof` below, because an
-extendable-output function is not a `HashF` and `src/ellipticcurves/alias.py`
+extendable-output function is not a `HashF` and `src/btclib_ecc/alias.py`
 states that it is not: a SHAKE's `digest()` takes the output length that a
 `HashObject`'s does not declare, and its `digest_size` reads 0. The adapter pins
 a length rather than the library growing one, and it is `n_size` here because
@@ -82,13 +82,13 @@ from typing import Any, Protocol
 
 import pytest
 
-from ellipticcurves import kdf
-from ellipticcurves.alias import HashF, HashObject, Point
-from ellipticcurves.curves import mult, point_from_octets, secp256k1
-from ellipticcurves.ecc import dh, dsa
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesValueError,
+from btclib_ecc import kdf
+from btclib_ecc.alias import HashF, HashObject, Point
+from btclib_ecc.curves import mult, point_from_octets, secp256k1
+from btclib_ecc.ecc import dh, dsa
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccValueError,
 )
 from tests import load, vector_id
 from tests.curves.curve_test import no_bindings
@@ -142,19 +142,19 @@ def _read_element(stream: BytesIO) -> tuple[int, bytes]:
     tag = stream.read(1)
     size = stream.read(1)
     if not tag or not size:
-        raise EllipticCurvesValueError("truncated DER element")
+        raise BTClibEccValueError("truncated DER element")
     length = size[0]
     if length & 0x80:
         size_size = length & 0x7F
         size_bytes = stream.read(size_size)
         if not 0 < size_size <= 4 or len(size_bytes) != size_size:
-            raise EllipticCurvesValueError("invalid DER length")
+            raise BTClibEccValueError("invalid DER length")
         length = int.from_bytes(size_bytes, byteorder="big")
         if length < 0x80:
-            raise EllipticCurvesValueError("non-minimal DER length")
+            raise BTClibEccValueError("non-minimal DER length")
     value = stream.read(length)
     if len(value) != length:
-        raise EllipticCurvesValueError("truncated DER value")
+        raise BTClibEccValueError("truncated DER value")
     return tag[0], value
 
 
@@ -178,29 +178,29 @@ def _point_from_spki(der: bytes) -> Point:
     stream = BytesIO(der)
     tag, spki = _read_element(stream)
     if tag != _SEQUENCE or stream.read(1):
-        raise EllipticCurvesValueError("not one DER SEQUENCE")
+        raise BTClibEccValueError("not one DER SEQUENCE")
 
     body = BytesIO(spki)
     tag, algorithm = _read_element(body)
     if tag != _SEQUENCE:
-        raise EllipticCurvesValueError("no AlgorithmIdentifier")
+        raise BTClibEccValueError("no AlgorithmIdentifier")
     tag, key = _read_element(body)
     if tag != _BIT_STRING or body.read(1):
-        raise EllipticCurvesValueError("no key BIT STRING")
+        raise BTClibEccValueError("no key BIT STRING")
 
     parameters = BytesIO(algorithm)
     tag, value = _read_element(parameters)
     if tag != _OBJECT_IDENTIFIER or value != _ID_EC_PUBLIC_KEY:
-        raise EllipticCurvesValueError("not an EC public key")
+        raise BTClibEccValueError("not an EC public key")
     tag, value = _read_element(parameters)
     if tag != _OBJECT_IDENTIFIER or value != _SECP256K1 or parameters.read(1):
-        raise EllipticCurvesValueError("not a secp256k1 key")
+        raise BTClibEccValueError("not a secp256k1 key")
 
     # the leading octet of a BIT STRING is the number of unused bits in
     # its last one, and a key is a whole number of octets: anything but
     # zero there is a key this is not reading
     if not key or key[0]:
-        raise EllipticCurvesValueError("invalid unused bit count")
+        raise BTClibEccValueError("invalid unused bit count")
     return point_from_octets(key[1:], secp256k1)
 
 
@@ -227,7 +227,7 @@ def _point_from_jwk(jwk: dict[str, Any]) -> Point:
     the coordinates.
     """
     if jwk.get("kty") != "EC" or jwk.get("crv") != "P-256K":
-        raise EllipticCurvesValueError("not a secp256k1 EC JWK")
+        raise BTClibEccValueError("not a secp256k1 EC JWK")
     x = _b64url(jwk["x"])
     y = _b64url(jwk["y"])
     return point_from_octets(b"\x04" + x + y, secp256k1)
@@ -296,7 +296,7 @@ class _PinnedXof:
     A test's adapter, deliberately not a library one. `HashF` admitting
     an XOF would admit it to `dsa.sign` as well, whose nonce is RFC6979
     -- HMAC, which over an XOF is not defined -- and would answer inside
-    a test module a question `src/ellipticcurves/alias.py` states the answer to.
+    a test module a question `src/btclib_ecc/alias.py` states the answer to.
     """
 
     def __init__(self, xof: _Xof, size: int) -> None:
@@ -543,7 +543,7 @@ def test_ecdsa_p1363(
             int.from_bytes(raw[:size], byteorder="big"),
             int.from_bytes(raw[size:], byteorder="big"),
         )
-    except EllipticCurvesValueError:
+    except BTClibEccValueError:
         assert vector["result"] != "valid"
         return
 
@@ -589,7 +589,7 @@ def test_ecdh(
     try:
         pub_key = _point_from_spki(bytes.fromhex(vector["public"]))
         shared_key = dh.diffie_hellman(prv_key, pub_key, _KEY_SIZE)
-    except (EllipticCurvesValueError, EllipticCurvesRuntimeError):
+    except (BTClibEccValueError, BTClibEccRuntimeError):
         assert vector["result"] != "valid"
         return
 
@@ -633,7 +633,7 @@ def test_ecdh_webcrypto(
     try:
         pub_key = _point_from_jwk(vector["public"])
         shared_key = dh.diffie_hellman(prv_key, pub_key, _KEY_SIZE)
-    except (EllipticCurvesValueError, EllipticCurvesRuntimeError):
+    except (BTClibEccValueError, BTClibEccRuntimeError):
         assert vector["result"] != "valid"
         return
 

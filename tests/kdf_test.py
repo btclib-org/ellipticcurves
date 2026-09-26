@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.kdf` module.
+"""Tests for the `btclib_ecc.kdf` module.
 
 **Both KDFs are driven under SHA-1 as well as SHA-256**, and that is a
 deliberate reading of this tree's rule rather than an oversight. The
@@ -22,9 +22,9 @@ from hashlib import sha1, sha224, sha256, sha384, sha512
 
 import pytest
 
-from ellipticcurves.alias import HashF
-from ellipticcurves.exceptions import EllipticCurvesTypeError, EllipticCurvesValueError
-from ellipticcurves.kdf import ansi_x9_63_kdf, hkdf, hkdf_expand, hkdf_extract
+from btclib_ecc.alias import HashF
+from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
+from btclib_ecc.kdf import ansi_x9_63_kdf, hkdf, hkdf_expand, hkdf_extract
 
 
 @pytest.mark.parametrize("size", [-1, 0, -(2**32)])
@@ -38,7 +38,7 @@ def test_a_key_of_no_octets_is_no_key(size: int) -> None:
     as a positive integer, and a caller asking for no octets of keying material
     has a bug rather than an empty key (issue btclib-org/btclib#321).
     """
-    with pytest.raises(EllipticCurvesValueError, match="invalid keying data size"):
+    with pytest.raises(BTClibEccValueError, match="invalid keying data size"):
         ansi_x9_63_kdf(b"z", size, sha256, None)
 
 
@@ -50,10 +50,10 @@ def test_a_size_that_is_no_integer_is_refused_as_such(size: object) -> None:
     about slice indices -- outside the exception contract of
     src/btclib/exceptions.py, which is the contract tests/fuzz_test.py holds
     every parser to. A bool is refused for the reason
-    `ellipticcurves._utils.is_integer` gives: `True` would have derived a
+    `btclib_ecc._utils.is_integer` gives: `True` would have derived a
     one-octet key.
     """
-    with pytest.raises(EllipticCurvesTypeError, match="non-integer keying data size"):
+    with pytest.raises(BTClibEccTypeError, match="non-integer keying data size"):
         ansi_x9_63_kdf(b"z", size, sha256, None)  # type: ignore[arg-type]
 
 
@@ -327,9 +327,7 @@ def test_hkdf_derives_at_most_255_digests() -> None:
     hf_size = sha256().digest_size
     prk = hkdf_extract(b"z", None, sha256)
     assert len(hkdf_expand(prk, 255 * hf_size, sha256, None)) == 255 * hf_size
-    with pytest.raises(
-        EllipticCurvesValueError, match="cannot derive a key larger than "
-    ):
+    with pytest.raises(BTClibEccValueError, match="cannot derive a key larger than "):
         hkdf_expand(prk, 255 * hf_size + 1, sha256, None)
 
 
@@ -341,14 +339,14 @@ def test_hkdf_refuses_a_key_of_no_octets(size: int) -> None:
     the refusals the SEC 1 KDF makes are the refusals this one makes, and
     both leave through `_assert_valid_keying_data_size`.
     """
-    with pytest.raises(EllipticCurvesValueError, match="invalid keying data size"):
+    with pytest.raises(BTClibEccValueError, match="invalid keying data size"):
         hkdf(b"z", size, sha256, None, None)
 
 
 @pytest.mark.parametrize("size", [1.5, 32.0, "32", None, True, False])
 def test_hkdf_refuses_a_size_that_is_no_integer(size: object) -> None:
     """As this library's TypeError, whichever KDF was asked."""
-    with pytest.raises(EllipticCurvesTypeError, match="non-integer keying data size"):
+    with pytest.raises(BTClibEccTypeError, match="non-integer keying data size"):
         hkdf(b"z", size, sha256, None, None)  # type: ignore[arg-type]
 
 
@@ -362,7 +360,5 @@ def test_hkdf_expand_refuses_a_short_pseudorandom_key() -> None:
     has to be told.
     """
     hf_size = sha256().digest_size
-    with pytest.raises(
-        EllipticCurvesValueError, match="pseudorandom key shorter than "
-    ):
+    with pytest.raises(BTClibEccValueError, match="pseudorandom key shorter than "):
         hkdf_expand(bytes(hf_size - 1), 42, sha256, None)

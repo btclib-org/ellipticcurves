@@ -4,7 +4,7 @@
 
 """Tests for what the package exports.
 
-Every module and package of ellipticcurves declares an `__all__`, at every
+Every module and package of btclib_ecc declares an `__all__`, at every
 depth: a name is public here because a list says so, not because it
 happens to lack a leading underscore. A list per module is a list per
 module to keep true, and the policy tests below are what keeps it, rather
@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-import ellipticcurves
+import btclib_ecc
 from tests import module_names
 
 if TYPE_CHECKING:
@@ -42,8 +42,8 @@ if TYPE_CHECKING:
 # installation rather than about a curve, which that module's docstring
 # says
 UNEXPORTED = {
-    "ellipticcurves": ["name"],
-    "ellipticcurves.curves.curve": ["datadir"],
+    "btclib_ecc": ["name"],
+    "btclib_ecc.curves.curve": ["datadir"],
 }
 
 
@@ -55,7 +55,7 @@ def public_name(dotted: str) -> bool:
 def library_modules() -> list[ModuleType]:
     """Return every module and package of the library, private ones out.
 
-    Found rather than listed: one added to ellipticcurves is one these
+    Found rather than listed: one added to btclib_ecc is one these
     tests ask about. Anything under a private name is out: a module whose
     name opens with an underscore is not part of the surface, so what is
     public *in* it is not reachable by any spelling a caller is offered.
@@ -175,23 +175,21 @@ def test_nothing_becomes_public_by_accident() -> None:
 
 
 def test_the_root_publishes_every_top_level_module() -> None:
-    """`ellipticcurves.__all__` is the tree's root, missing nothing top-level.
+    """`btclib_ecc.__all__` is the tree's root, missing nothing top-level.
 
     The list is written out rather than discovered -- a declaration is a
     list somebody edited -- and this is the other half of that: a module
-    added to `src/ellipticcurves/` and not published there would be a name
+    added to `src/btclib_ecc/` and not published there would be a name
     no walk from the root reaches.
     """
     top_level = sorted(
-        name
-        for _, name, _ in iter_modules(ellipticcurves.__path__)
-        if public_name(name)
+        name for _, name, _ in iter_modules(btclib_ecc.__path__) if public_name(name)
     )
-    assert sorted(ellipticcurves.__all__) == top_level
+    assert sorted(btclib_ecc.__all__) == top_level
     # and each answers on a package that imported none of them, which is
     # what the module __getattr__ is for
     for name in top_level:
-        assert getattr(ellipticcurves, name).__name__ == f"ellipticcurves.{name}"
+        assert getattr(btclib_ecc, name).__name__ == f"btclib_ecc.{name}"
 
 
 def test_the_root_answers_only_for_what_it_publishes() -> None:
@@ -199,13 +197,13 @@ def test_the_root_answers_only_for_what_it_publishes() -> None:
 
     A private module is not asserted absent, and could not be: the import
     machinery sets a submodule as an attribute of its package, so any
-    module importing `ellipticcurves._utils` puts the name there. What the
+    module importing `btclib_ecc._utils` puts the name there. What the
     list decides is what this package imports *for* a caller.
     """
     with pytest.raises(AttributeError, match="has no attribute 'cruves'"):
-        _ = ellipticcurves.cruves
+        _ = btclib_ecc.cruves
     # dir() answers the published tree, not only what has been imported
-    assert set(ellipticcurves.__all__) <= set(dir(ellipticcurves))
+    assert set(btclib_ecc.__all__) <= set(dir(btclib_ecc))
 
 
 def test_the_import_scan_reaches_a_nested_import() -> None:

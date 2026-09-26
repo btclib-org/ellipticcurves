@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.frost` module.
+"""Tests for the `btclib_ecc.ecc.frost` module.
 
 The vectors are BIP445's own, all six signing-algorithm files of
 `bitcoin/bips#2070`'s `bip-0445/python/vectors/`, vendored under
@@ -28,16 +28,16 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.curves import bytes_from_point, mult, secp256k1
-from ellipticcurves.ecc import frost, ssa
-from ellipticcurves.exceptions import (
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.curves import bytes_from_point, mult, secp256k1
+from btclib_ecc.ecc import frost, ssa
+from btclib_ecc.exceptions import (
+    BTClibEccTypeError,
+    BTClibEccValueError,
     InvalidContributionError,
 )
 from tests import load, vector_id
 
-_ERRORS = (EllipticCurvesValueError, InvalidContributionError)
+_ERRORS = (BTClibEccValueError, InvalidContributionError)
 
 
 def _hex_all(values: list[str]) -> list[bytes]:
@@ -68,7 +68,7 @@ def assert_error(error: dict[str, Any], exc: Exception) -> None:
         assert exc.contrib == error["contrib"]
     else:
         assert error["type"] == "ValueError"
-        assert isinstance(exc, EllipticCurvesValueError)
+        assert isinstance(exc, BTClibEccValueError)
         # the message, byte for byte: the vectors compare BIP445's own
         # reference strings this way, and frost.py copies them verbatim
         assert str(exc) == error["message"]
@@ -640,9 +640,7 @@ def test_validate_threshold_info_refuses_a_share_off_the_polynomial(
         pytest.skip("no share beyond the base t to tamper with")
     foreign_group = next(g for g in _SIGN_VERIFY["test_groups"] if g is not group)
     pub_shares[-1] = bytes.fromhex(foreign_group["pubshares"][0])
-    with pytest.raises(
-        EllipticCurvesValueError, match="do not lie on a single polynomial"
-    ):
+    with pytest.raises(BTClibEccValueError, match="do not lie on a single polynomial"):
         frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
 
 
@@ -652,7 +650,7 @@ def test_validate_threshold_info_refuses_a_key_the_shares_do_not_match() -> None
     n, t = group["n"], group["t"]
     pub_shares = _hex_all(group["pubshares"])[:n]
     other_thresh_pk = bytes.fromhex(_SIGN_VERIFY["test_groups"][1]["thresh_pk"])
-    with pytest.raises(EllipticCurvesValueError, match="do not match"):
+    with pytest.raises(BTClibEccValueError, match="do not match"):
         frost.validate_threshold_info(
             frost.ThresholdInfo(t, other_thresh_pk, pub_shares)
         )
@@ -664,7 +662,7 @@ def test_validate_threshold_info_refuses_an_invalid_threshold_public_key() -> No
     n, t = group["n"], group["t"]
     pub_shares = _hex_all(group["pubshares"])[:n]
     not_a_point = bytes.fromhex("02" + "ff" * 32)
-    with pytest.raises(EllipticCurvesValueError, match="Invalid threshold public key"):
+    with pytest.raises(BTClibEccValueError, match="Invalid threshold public key"):
         frost.validate_threshold_info(frost.ThresholdInfo(t, not_a_point, pub_shares))
 
 
@@ -675,9 +673,7 @@ def test_validate_threshold_info_refuses_an_invalid_pubshare() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares: list[bytes | None] = list(_hex_all(group["pubshares"])[:n])
     pub_shares[0] = bytes.fromhex("02" + "ff" * 32)
-    with pytest.raises(
-        EllipticCurvesValueError, match=r"Invalid pubshare at index 0\."
-    ):
+    with pytest.raises(BTClibEccValueError, match=r"Invalid pubshare at index 0\."):
         frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
 
 
@@ -690,7 +686,7 @@ def test_validate_threshold_info_refuses_fewer_than_t_present_shares() -> None:
     for i in range(1, n):
         pub_shares[i] = None
     with pytest.raises(
-        EllipticCurvesValueError, match="At least t pubshares must be present"
+        BTClibEccValueError, match="At least t pubshares must be present"
     ):
         frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
 
@@ -701,7 +697,7 @@ def test_validate_threshold_info_refuses_a_threshold_outside_1_to_n() -> None:
     n = group["n"]
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares = _hex_all(group["pubshares"])[:n]
-    with pytest.raises(EllipticCurvesValueError, match=r"1 <= t <= n"):
+    with pytest.raises(BTClibEccValueError, match=r"1 <= t <= n"):
         frost.validate_threshold_info(frost.ThresholdInfo(n + 1, thresh_pk, pub_shares))
 
 
@@ -710,7 +706,7 @@ def test_validate_threshold_info_refuses_more_than_128_participants() -> None:
     group = _SIGN_VERIFY["test_groups"][0]
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares: list[bytes | None] = [None] * 129
-    with pytest.raises(EllipticCurvesValueError, match=r"n <= 128"):
+    with pytest.raises(BTClibEccValueError, match=r"n <= 128"):
         frost.validate_threshold_info(frost.ThresholdInfo(1, thresh_pk, pub_shares))
 
 
@@ -729,7 +725,7 @@ def test_session_values_refuses_a_threshold_outside_1_to_n() -> None:
     session_ctx = frost.SessionContext(
         n, n + 1, [0], None, thresh_pk, bytes(66), [], [], b"msg"
     )
-    with pytest.raises(EllipticCurvesValueError, match=r"1 <= t <= n"):
+    with pytest.raises(BTClibEccValueError, match=r"1 <= t <= n"):
         frost.session_values(session_ctx)
 
 
@@ -740,7 +736,7 @@ def test_session_values_refuses_more_than_128_participants() -> None:
     session_ctx = frost.SessionContext(
         129, 1, [0], None, thresh_pk, bytes(66), [], [], b"msg"
     )
-    with pytest.raises(EllipticCurvesValueError, match=r"n <= 128"):
+    with pytest.raises(BTClibEccValueError, match=r"n <= 128"):
         frost.session_values(session_ctx)
 
 
@@ -753,7 +749,7 @@ def test_session_values_refuses_mismatched_pubshares_and_ids_length() -> None:
     session_ctx = frost.SessionContext(
         n, t, [0, 1], pub_shares, thresh_pk, bytes(66), [], [], b"msg"
     )
-    with pytest.raises(EllipticCurvesValueError, match="same length"):
+    with pytest.raises(BTClibEccValueError, match="same length"):
         frost.session_values(session_ctx)
 
 
@@ -764,7 +760,7 @@ def test_partial_sig_verify_refuses_mismatched_list_lengths() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_nonces = _hex_all(group["pubnonces"])[:2]
     pub_shares = _hex_all(group["pubshares"])[:1]
-    with pytest.raises(EllipticCurvesValueError, match="same length"):
+    with pytest.raises(BTClibEccValueError, match="same length"):
         frost.partial_sig_verify(
             bytes(32),
             pub_nonces,
@@ -787,7 +783,7 @@ def test_partial_sig_verify_refuses_a_signer_index_out_of_range() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_nonces = _hex_all(group["pubnonces"])[:1]
     pub_shares = _hex_all(group["pubshares"])[:1]
-    with pytest.raises(EllipticCurvesValueError, match="signer index"):
+    with pytest.raises(BTClibEccValueError, match="signer index"):
         frost.partial_sig_verify(
             bytes(32),
             pub_nonces,
@@ -840,7 +836,7 @@ def test_sec_nonce_signs_once() -> None:
     # every byte, and no byte added or taken out of it
     assert sec_nonce == bytearray(64)
     with pytest.raises(
-        EllipticCurvesValueError, match="first secnonce value is out of range"
+        BTClibEccValueError, match="first secnonce value is out of range"
     ):
         frost.sign(sec_nonce, sec_share, 0, session_ctx)
 
@@ -855,7 +851,7 @@ def test_sec_nonce_signs_once() -> None:
 
 def test_threshold_info_refuses_pub_shares_that_is_not_a_sequence_of_them() -> None:
     """`pub_shares` as `Octets`, not a `Sequence` (btclib-org/btclib#1405)."""
-    with pytest.raises(EllipticCurvesTypeError, match="invalid pub_shares type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid pub_shares type"):
         frost.ThresholdInfo(1, bytes(33), b"\xaa\xbb\xcc\xdd")  # type: ignore[arg-type]
 
 
@@ -961,7 +957,7 @@ def test_sign_refuses_a_secnonce_scalar_outside_the_group_order(
     sec_share = (5).to_bytes(32, "big")
     session_ctx, _, _ = _one_signer_session(sec_share)
     sec_nonce = bytearray(k_1.to_bytes(32, "big") + k_2.to_bytes(32, "big"))
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         frost.sign(sec_nonce, sec_share, 0, session_ctx)
 
     largest = bytearray(
@@ -989,7 +985,7 @@ def test_sign_accepts_the_secret_share_one() -> None:
     for refused in (bytes(32), secp256k1.n.to_bytes(32, "big")):
         session_ctx, sec_nonce, _ = _one_signer_session(sec_share)
         with pytest.raises(
-            EllipticCurvesValueError, match="secret share value is out of range"
+            BTClibEccValueError, match="secret share value is out of range"
         ):
             frost.sign(sec_nonce, refused, 0, session_ctx)
 
@@ -1001,7 +997,7 @@ def test_session_values_refuses_an_id_outside_0_to_n_minus_1(signer_id: int) -> 
     session_ctx = frost.SessionContext(
         1, 1, [signer_id], None, thresh_pk, bytes(66), [], [], b"msg"
     )
-    with pytest.raises(EllipticCurvesValueError, match=r"Invalid id at index 0"):
+    with pytest.raises(BTClibEccValueError, match=r"Invalid id at index 0"):
         frost.session_values(session_ctx)
 
 
@@ -1028,7 +1024,7 @@ def test_partial_sig_verify_refuses_more_pub_nonces_than_ids() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_nonces = _hex_all(group["pubnonces"])[:3]
     pub_shares = _hex_all(group["pubshares"])[:2]
-    with pytest.raises(EllipticCurvesValueError, match="same length"):
+    with pytest.raises(BTClibEccValueError, match="same length"):
         frost.partial_sig_verify(
             bytes(32), pub_nonces, n, t, [0, 1], pub_shares, thresh_pk, [], [], b"m", 0
         )
@@ -1049,7 +1045,7 @@ def test_apply_tweak_refuses_a_tweak_of_the_wrong_size_or_range(
 ) -> None:
     """A tweak is 32 bytes and below the group order: n itself is out."""
     thresh_pk = bytes.fromhex(_SIGN_VERIFY["test_groups"][0]["thresh_pk"])
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         frost.apply_tweak(frost.tweak_ctx_init(thresh_pk), tweak, False)
 
 

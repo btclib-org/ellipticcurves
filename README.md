@@ -1,4 +1,4 @@
-# ellipticcurves
+# btclib-ecc
 
 Elliptic curve arithmetic, and the signature, key-agreement and
 commitment schemes built on it, in typed Python.
@@ -21,20 +21,20 @@ A badge that reports no state -- "we use ruff", "we use uv" -- reports a
 choice instead, and those are in CONTRIBUTING.md, beside the prose that
 says how the choice is enforced.
 -->
-[![PyPI version](https://img.shields.io/pypi/v/ellipticcurves.svg?logo=pypi)](https://pypi.org/project/ellipticcurves/)
+[![PyPI version](https://img.shields.io/pypi/v/btclib-ecc.svg?logo=pypi)](https://pypi.org/project/btclib-ecc/)
 [![GitHub release](https://img.shields.io/github/v/release/btclib-org/ellipticcurves.svg)](https://github.com/btclib-org/ellipticcurves/releases)
-[![development status](https://img.shields.io/pypi/status/ellipticcurves.svg)](https://pypi.org/project/ellipticcurves/)
+[![development status](https://img.shields.io/pypi/status/btclib-ecc.svg)](https://pypi.org/project/btclib-ecc/)
 [![license](https://img.shields.io/github/license/btclib-org/ellipticcurves.svg)](https://github.com/btclib-org/ellipticcurves/blob/main/LICENSE)
-[![downloads](https://static.pepy.tech/badge/ellipticcurves)](https://pepy.tech/projects/ellipticcurves)
-[![supported Python versions](https://img.shields.io/pypi/pyversions/ellipticcurves.svg?logo=python)](https://pypi.org/project/ellipticcurves/)
-[![implementation](https://img.shields.io/pypi/implementation/ellipticcurves.svg)](https://pypi.org/project/ellipticcurves/)
-[![wheel](https://img.shields.io/pypi/wheel/ellipticcurves.svg)](https://pypi.org/project/ellipticcurves/)
+[![downloads](https://static.pepy.tech/badge/btclib-ecc)](https://pepy.tech/projects/btclib-ecc)
+[![supported Python versions](https://img.shields.io/pypi/pyversions/btclib-ecc.svg?logo=python)](https://pypi.org/project/btclib-ecc/)
+[![implementation](https://img.shields.io/pypi/implementation/btclib-ecc.svg)](https://pypi.org/project/btclib-ecc/)
+[![wheel](https://img.shields.io/pypi/wheel/btclib-ecc.svg)](https://pypi.org/project/btclib-ecc/)
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/ellipticcurves/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/ellipticcurves/main)
 [![lint workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/lint.yml?query=branch%3Amain)
 [![test workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/test.yml?query=branch%3Amain)
 [![docs workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/docs.yml?query=branch%3Amain)
-[![documentation build](https://app.readthedocs.org/projects/ellipticcurves/badge/?version=latest)](https://ellipticcurves.readthedocs.io)
+[![documentation build](https://app.readthedocs.org/projects/btclib-ecc/badge/?version=latest)](https://btclib-ecc.readthedocs.io)
 [![vendored-vectors workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/vendored-vectors.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/vendored-vectors.yml?query=branch%3Amain)
 [![mutation workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/mutation.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/mutation.yml?query=branch%3Amain)
 [![fuzz workflow status](https://github.com/btclib-org/ellipticcurves/actions/workflows/fuzz.yml/badge.svg?branch=main)](https://github.com/btclib-org/ellipticcurves/actions/workflows/fuzz.yml?query=branch%3Amain)
@@ -107,7 +107,7 @@ to the upstream commit it was copied from.
 ## Installing
 
 ```shell
-python -m pip install --upgrade "ellipticcurves[secp256k1]"
+python -m pip install --upgrade "btclib-ecc[secp256k1]"
 ```
 
 The `secp256k1` extra installs the
@@ -134,7 +134,7 @@ what it intends to do, and what it deliberately does not, is its
 
 ## Links
 
-- Documentation: <https://ellipticcurves.readthedocs.io/>
+- Documentation: <https://btclib-ecc.readthedocs.io/>
 - Source: <https://github.com/btclib-org/ellipticcurves>
 - Releases: <https://github.com/btclib-org/ellipticcurves/releases>
 - [CHANGELOG.md](./CHANGELOG.md), and [RELEASE_NOTES.md](./RELEASE_NOTES.md)

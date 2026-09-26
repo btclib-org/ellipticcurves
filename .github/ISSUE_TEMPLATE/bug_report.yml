@@ -1,6 +1,6 @@
 ---
 name: Bug report
-description: Something in ellipticcurves does not work as documented
+description: Something in btclib-ecc does not work as documented
 labels: [bug]
 
 body:
@@ -28,10 +28,10 @@ body:
   - type: input
     id: version
     attributes:
-      label: ellipticcurves version
+      label: btclib-ecc version
       description: >
         `python -c "from importlib.metadata import version;
-        print(version('ellipticcurves'))"`
+        print(version('btclib-ecc'))"`
       placeholder: "2026.10"
     validations:
       required: true

@@ -47,7 +47,7 @@ jobs:
   public-api:
     uses: btclib-org/.github/.github/workflows/reusable-public-api.yml@main
     with:
-      package: ellipticcurves
+      package: btclib_ecc
 
   # the whole gate, exactly as a pull request runs it, and the build:
   # test.yml's dist job builds the distribution files, checks them and
@@ -129,7 +129,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/ellipticcurves/
+      url: https://test.pypi.org/project/btclib-ecc/
     permissions:
       id-token: write # the OIDC token that lets TestPyPI trust the workflow itself
     steps:
@@ -161,7 +161,7 @@ jobs:
     # job starts, and admits `v*` tags alone
     environment:
       name: pypi
-      url: https://pypi.org/project/ellipticcurves/
+      url: https://pypi.org/project/btclib-ecc/
     permissions:
       id-token: write # the OIDC token that lets PyPI trust the workflow itself
     steps:
@@ -241,4 +241,4 @@ jobs:
     if: github.event_name == 'push'
     uses: btclib-org/.github/.github/workflows/reusable-documented.yml@main
     with:
-      readthedocs-slug: ellipticcurves
+      readthedocs-slug: btclib-ecc

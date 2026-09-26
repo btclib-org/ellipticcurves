@@ -2,19 +2,19 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves` package metadata."""
+"""Tests for the `btclib_ecc` package metadata."""
 
 import importlib
 import importlib.metadata
 
 import pytest
 
-import ellipticcurves
+import btclib_ecc
 
 
 def test_version() -> None:
     """Verify __version__ matches the installed metadata."""
-    assert ellipticcurves.__version__ == importlib.metadata.version("ellipticcurves")
+    assert btclib_ecc.__version__ == importlib.metadata.version("btclib-ecc")
 
 
 def test_version_without_installed_metadata(
@@ -32,17 +32,17 @@ def test_version_without_installed_metadata(
     def raise_package_not_found(_: str) -> str:
         raise importlib.metadata.PackageNotFoundError
 
-    # patch the attribute of the module, not the name ellipticcurves imported:
+    # patch the attribute of the module, not the name btclib_ecc imported:
     # the `from importlib.metadata import version` line looks it up again on
     # reload, which is what makes this reachable at all
     monkeypatch.setattr(importlib.metadata, "version", raise_package_not_found)
     try:
-        assert importlib.reload(ellipticcurves).__version__ == "unknown"
+        assert importlib.reload(btclib_ecc).__version__ == "unknown"
     finally:
         # reload once more with the lookup restored, so the module every
         # other test sees carries the real version again. monkeypatch would
         # undo the patch by itself, but not the module state it produced
         monkeypatch.undo()
-        importlib.reload(ellipticcurves)
+        importlib.reload(btclib_ecc)
 
-    assert ellipticcurves.__version__ == importlib.metadata.version("ellipticcurves")
+    assert btclib_ecc.__version__ == importlib.metadata.version("btclib-ecc")

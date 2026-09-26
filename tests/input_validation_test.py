@@ -6,26 +6,26 @@
 
 > Every public function guarantees the validation of all its inputs,
 > directly or indirectly. A malformed argument leaves as
-> `EllipticCurvesTypeError` or `EllipticCurvesValueError`.
+> `BTClibEccTypeError` or `BTClibEccValueError`.
 
 CONTRIBUTING.md's "Every public function validates its inputs" states it, and
 which of the two classes comes out is not a coin toss -- it is the distinction
 issue btclib-org/btclib#814 settled, so this file drives the two separately:
 
 - **a value of a type the signature does not declare** is the caller's
-  own mistake, and leaves as an `EllipticCurvesTypeError`. Every function
+  own mistake, and leaves as a `BTClibEccTypeError`. Every function
   the walk can drive, without exception.
 - **a value of a declared type that no valid input carries** is a fact
-  about the input, and leaves as an `EllipticCurvesException`.
+  about the input, and leaves as a `BTClibEccException`.
 
-Both are `EllipticCurvesException`, which is what makes the second rule one
+Both are `BTClibEccException`, which is what makes the second rule one
 predicate instead of a tuple that has to be kept in step with the
 hierarchy.
 
 ## How it calls what it calls
 
 The package's input types are few and well bounded, most of them named in
-`src/ellipticcurves/alias.py` and the key ones beside their converters.
+`src/btclib_ecc/alias.py` and the key ones beside their converters.
 `_WRONG_TYPE` and `_WRONG_VALUE` give each of them values of the two
 kinds, and the walk finds every public module-level function whose
 *required* parameters are all of those types. Those it can call with no
@@ -75,9 +75,9 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.exceptions import EllipticCurvesException, EllipticCurvesTypeError
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccTypeError
 
-_LIBRARY = Path(__file__).parents[1] / "src" / "ellipticcurves"
+_LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
 
 # a value of no type the alias declares: the caller's own mistake, and a
 # call mypy refuses. The tuples are read round-robin so that a function
@@ -196,14 +196,14 @@ _DRIVEN = sorted(_DRIVABLE)
 def test_a_wrong_type_leaves_as_a_type_error_of_the_package(dotted: str) -> None:
     """The first rule, and it has no exceptions.
 
-    `EllipticCurvesTypeError` and not `EllipticCurvesException`: this is
-    where the class is the point. A bare `TypeError` fails here as an
-    `EllipticCurvesValueError` does -- the first is a leak from underneath
+    `BTClibEccTypeError` and not `BTClibEccException`: this is
+    where the class is the point. A bare `TypeError` fails here as a
+    `BTClibEccValueError` does -- the first is a leak from underneath
     the package, the second is the package calling a caller's mistake a
     fact about the input.
     """
     for call in _calls(dotted, _WRONG_TYPE):
-        with pytest.raises(EllipticCurvesTypeError):
+        with pytest.raises(BTClibEccTypeError):
             call()
 
 
@@ -211,14 +211,14 @@ def test_a_wrong_type_leaves_as_a_type_error_of_the_package(dotted: str) -> None
 def test_a_wrong_value_leaves_as_an_exception_of_the_package(dotted: str) -> None:
     """The second rule, over every function the walk drives.
 
-    `EllipticCurvesException` and not one of the three: which of them a
-    malformed value deserves is the function's to decide -- a size is an
-    `EllipticCurvesValueError`, a bool where a number belongs is an
-    `EllipticCurvesTypeError` -- and the contract a caller is given is the
+    `BTClibEccException` and not one of the three: which of them a
+    malformed value deserves is the function's to decide -- a size is a
+    `BTClibEccValueError`, a bool where a number belongs is a
+    `BTClibEccTypeError` -- and the contract a caller is given is the
     base.
     """
     for call in _calls(dotted, _WRONG_VALUE):
-        with pytest.raises(EllipticCurvesException):
+        with pytest.raises(BTClibEccException):
             call()
 
 
@@ -226,7 +226,7 @@ def test_the_vocabulary_is_the_libraries_input_types() -> None:
     """A renamed type would narrow the walk without failing anything.
 
     Every name in the two vocabularies is still declared under
-    `src/ellipticcurves/`, and
+    `src/btclib_ecc/`, and
     every type `alias.py` declares and a public parameter is annotated
     with is either in the vocabulary or named below with the reason no
     wrong value can be built for it.
@@ -295,11 +295,11 @@ def test_the_walk_reaches_what_it_claims() -> None:
     must leave alone: a private name, and a function whose required
     parameters are not all in the vocabulary.
     """
-    assert _DRIVABLE["ellipticcurves.hashes.reduce_to_hlen"] == ["Octets"]
-    assert _DRIVABLE["ellipticcurves.ecc.dleq.generate_proof"] == ["Integer", "PubKey"]
+    assert _DRIVABLE["btclib_ecc.hashes.reduce_to_hlen"] == ["Octets"]
+    assert _DRIVABLE["btclib_ecc.ecc.dleq.generate_proof"] == ["Integer", "PubKey"]
     # `ec` and `compressed` carry defaults and are not driven
-    assert _DRIVABLE["ellipticcurves.curves.sec_point.bytes_from_point"] == ["Point"]
+    assert _DRIVABLE["btclib_ecc.curves.sec_point.bytes_from_point"] == ["Point"]
 
-    assert "ellipticcurves.hashes._assert_valid_hf" not in _DRIVABLE
+    assert "btclib_ecc.hashes._assert_valid_hf" not in _DRIVABLE
     # a required parameter the vocabulary cannot build: a signature object
-    assert "ellipticcurves.ecc.dsa.verify" not in _DRIVABLE
+    assert "btclib_ecc.ecc.dsa.verify" not in _DRIVABLE

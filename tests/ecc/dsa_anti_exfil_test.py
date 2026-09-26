@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the ECDSA Anti-Exfil Protocol of `ellipticcurves.ecc.dsa`.
+"""Tests for the ECDSA Anti-Exfil Protocol of `btclib_ecc.ecc.dsa`.
 
 BlockstreamResearch/secp256k1-zkp's `ecdsa_s2c` module carries the
 vectors: the fixture below is that module's `ecdsa_s2c_tests`, whose
@@ -20,7 +20,7 @@ Which revision of `src/modules/ecdsa_s2c/tests_impl.h` those columns
 are is `tests/_data/README.md`'s entry for this module, beside the
 vendored files, and none is recorded here: a pin in that ledger is what
 `.github/workflows/vendored-vectors.yml` re-checks weekly, opening an
-issue where it is no longer the tip of its path. `ellipticcurves.ecc.dsa`'s
+issue where it is no longer the tip of its path. `btclib_ecc.ecc.dsa`'s
 `anti_exfil_host_commit` cites the header its docstring paraphrases, and
 that README's opening says why the citation carries no revision.
 """
@@ -29,9 +29,9 @@ from hashlib import sha1, sha256
 
 import pytest
 
-from ellipticcurves.curves import bytes_from_point, secp256k1
-from ellipticcurves.ecc import dsa
-from ellipticcurves.exceptions import EllipticCurvesValueError
+from btclib_ecc.curves import bytes_from_point, secp256k1
+from btclib_ecc.ecc import dsa
+from btclib_ecc.exceptions import BTClibEccValueError
 
 # the key and the message of test_ecdsa_s2c_fixed_vectors, which
 # test_ecdsa_anti_exfil_signer_commit reuses verbatim
@@ -215,11 +215,11 @@ def test_rho_and_the_commitment_are_hf_len() -> None:
     over what is merely an input the signature does not match.
     """
     short = b"\x00" * 31
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         dsa.anti_exfil_host_commit(short)
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         dsa.anti_exfil_sign(_HANDSHAKE_MSG_HASH, _PRV_KEY, short)
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         dsa.anti_exfil_signer_commit(_HANDSHAKE_MSG_HASH, _PRV_KEY, short)
 
     commitment = dsa.anti_exfil_host_commit(_RHO)
@@ -233,7 +233,7 @@ def test_rho_and_the_commitment_are_hf_len() -> None:
     msg_hash = sha1(b"to be signed").digest()  # noqa: S324
     rho = sha1(b"the host's randomness").digest()  # noqa: S324
     commitment = dsa.anti_exfil_host_commit(rho, sha1)
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         dsa.anti_exfil_signer_commit(msg_hash, _PRV_KEY, _RHO, secp256k1, sha1)
     R = dsa.anti_exfil_signer_commit(msg_hash, _PRV_KEY, commitment, secp256k1, sha1)
     sig = dsa.anti_exfil_sign(msg_hash, _PRV_KEY, rho, True, secp256k1, sha1)

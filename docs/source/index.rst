@@ -1,7 +1,7 @@
-.. ellipticcurves documentation master file: the root `toctree`.
+.. btclib-ecc documentation master file: the root `toctree`.
 
-ellipticcurves documentation
-============================
+btclib-ecc documentation
+========================
 
 .. toctree::
    :maxdepth: 1

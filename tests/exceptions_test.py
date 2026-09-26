@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for `ellipticcurves.exceptions`, and for what an exception carries.
+"""Tests for `btclib_ecc.exceptions`, and for what an exception carries.
 
 The classes with nothing added to their base need no test of their own:
 what they are is the base, and every module raising one asserts the
@@ -23,13 +23,13 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves import exceptions
-from ellipticcurves.exceptions import (
+from btclib_ecc import exceptions
+from btclib_ecc.exceptions import (
     BorromeanRingError,
-    EllipticCurvesException,
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+    BTClibEccException,
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
     InvalidContributionError,
 )
 
@@ -135,7 +135,7 @@ def test_the_message_is_composed_once(
 
 def test_an_exception_adding_nothing_round_trips_too() -> None:
     """The control: a class taking a message alone round-trips as it is."""
-    error = EllipticCurvesValueError("bad")
+    error = BTClibEccValueError("bad")
     for back in (pickle.loads(pickle.dumps(error)), copy.copy(error)):  # noqa: S301
         assert type(back) is type(error)
         assert str(back) == str(error)
@@ -143,7 +143,7 @@ def test_an_exception_adding_nothing_round_trips_too() -> None:
 
 
 def test_every_exception_of_the_module_is_one_base_to_catch() -> None:
-    """`except EllipticCurvesException` tells this package's failure apart.
+    """`except BTClibEccException` tells this package's failure apart.
 
     The classes are found rather than listed, so one added to the module
     is one this covers: a new exception that forgot the base would be a
@@ -157,7 +157,7 @@ def test_every_exception_of_the_module_is_one_base_to_catch() -> None:
     ]
     assert len(classes) == len(exceptions.__all__), "a non-class in __all__"
     uncatchable = [
-        cls.__name__ for cls in classes if not issubclass(cls, EllipticCurvesException)
+        cls.__name__ for cls in classes if not issubclass(cls, BTClibEccException)
     ]
     assert not uncatchable
 
@@ -165,14 +165,14 @@ def test_every_exception_of_the_module_is_one_base_to_catch() -> None:
 @pytest.mark.parametrize(
     "cls, builtin",
     [
-        (EllipticCurvesValueError, ValueError),
-        (EllipticCurvesTypeError, TypeError),
-        (EllipticCurvesRuntimeError, RuntimeError),
+        (BTClibEccValueError, ValueError),
+        (BTClibEccTypeError, TypeError),
+        (BTClibEccRuntimeError, RuntimeError),
     ],
     ids=["ValueError", "TypeError", "RuntimeError"],
 )
 def test_the_base_is_inherited_beside_the_builtin_not_instead_of_it(
-    cls: type[EllipticCurvesException], builtin: type[Exception]
+    cls: type[BTClibEccException], builtin: type[Exception]
 ) -> None:
     """The half that keeps every `except ValueError` already written working.
 
@@ -182,11 +182,11 @@ def test_the_base_is_inherited_beside_the_builtin_not_instead_of_it(
     inheriting the base transitively must not cost them the built-in.
     """
     assert issubclass(cls, builtin)
-    assert issubclass(cls, EllipticCurvesException)
+    assert issubclass(cls, BTClibEccException)
     lost = [
         sub.__name__
         for sub in cls.__subclasses__()
-        if not (issubclass(sub, builtin) and issubclass(sub, EllipticCurvesException))
+        if not (issubclass(sub, builtin) and issubclass(sub, BTClibEccException))
     ]
     assert not lost
 
@@ -199,12 +199,12 @@ def test_the_base_carries_no_behaviour_of_its_own() -> None:
     carry a field compose in `__str__` for the pickling reason the module
     docstring gives, which a base doing its own would undo.
     """
-    assert EllipticCurvesException.__init__ is Exception.__init__
-    assert EllipticCurvesException.__str__ is Exception.__str__
-    error = EllipticCurvesValueError("bad")
+    assert BTClibEccException.__init__ is Exception.__init__
+    assert BTClibEccException.__str__ is Exception.__str__
+    error = BTClibEccValueError("bad")
     assert str(error) == "bad"
     assert error.args == ("bad",)
-    assert type(pickle.loads(pickle.dumps(error))) is EllipticCurvesValueError  # noqa: S301
+    assert type(pickle.loads(pickle.dumps(error))) is BTClibEccValueError  # noqa: S301
 
 
 def _raise_invalid_contribution() -> None:
