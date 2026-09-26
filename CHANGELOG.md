@@ -30,3 +30,9 @@ driver that would keep both sides' numbers.
 The package: elliptic curve arithmetic over any short Weierstrass curve,
 the signature, commitment and key-agreement schemes built on it, and the
 vectors they answer to (issue btclib-org/btclib#2282).
+
+### `REPOSITORY.md` records what each read-back answers
+
+Each read-back carries what it answered on 2026-09-26; classic
+protection's also reads its force-push and deletion switches, and the
+environments' their required reviewers (issue btclib-org/btclib#2282).
