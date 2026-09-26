@@ -11,5 +11,7 @@ before upgrading, rather than a digit.
 
 ## v2026.10 (work in progress, not released yet)
 
+## v2026.9.26
+
 The first release of `btclib-ecc`: there is no earlier version of it
 to upgrade from.

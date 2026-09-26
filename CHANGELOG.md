@@ -25,6 +25,8 @@ driver that would keep both sides' numbers.
 
 ## v2026.10 (work in progress, not released yet)
 
+## v2026.9.26
+
 ### The repository opens
 
 The package: elliptic curve arithmetic over any short Weierstrass curve,
