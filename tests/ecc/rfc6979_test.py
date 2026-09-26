@@ -2,9 +2,9 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.rfc6979_nonce` module.
+"""Tests for the `btclib_ecc.ecc.rfc6979_nonce` module.
 
-The last four compare it against `ellipticcurves.ecc.bip340_nonce`, the other
+The last four compare it against `btclib_ecc.ecc.bip340_nonce`, the other
 deterministic nonce this library derives.
 """
 
@@ -15,13 +15,13 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.alias import HashObject
-from ellipticcurves.curves import mult
-from ellipticcurves.curves.curve import CURVES, Curve, secp256k1
-from ellipticcurves.ecc import dsa
-from ellipticcurves.ecc.bip340_nonce import _bip340_nonce_, bip340_nonce_
-from ellipticcurves.ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_, rfc6979_nonce_
-from ellipticcurves.hashes import reduce_to_hlen
+from btclib_ecc.alias import HashObject
+from btclib_ecc.curves import mult
+from btclib_ecc.curves.curve import CURVES, Curve, secp256k1
+from btclib_ecc.ecc import dsa
+from btclib_ecc.ecc.bip340_nonce import _bip340_nonce_, bip340_nonce_
+from btclib_ecc.ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_, rfc6979_nonce_
+from btclib_ecc.hashes import reduce_to_hlen
 from tests import load, vector_id
 from tests.curves.curve_test import low_card_curves
 

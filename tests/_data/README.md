@@ -10,7 +10,7 @@ paraphrase admits no byte comparison, so there is nothing for the weekly
 job to ask. What such a citation carries is decided by what it names. A
 file needs no revision -- the repository and the path keep their names,
 and a reader who opens it reads the reasoning upstream holds now, which
-is what a paraphrase sends them for -- and `ellipticcurves.ecc.dsa`'s
+is what a paraphrase sends them for -- and `btclib_ecc.ecc.dsa`'s
 anti-exfil docstrings cite `include/secp256k1_ecdsa_s2c.h` of
 BlockstreamResearch/secp256k1-zkp that way. A line needs one: a line
 number is the one thing that moves under a file that keeps its name, so
@@ -188,7 +188,7 @@ each file is as load-bearing as the valid half.
 
 What the files are measured against is `bip-0327/reference.py`, pinned
 separately at `9297c12729670d09f9149ec6d8bad967d8161bfe` (2025-10-03,
-the tip of that path): `src/ellipticcurves/ecc/musig2.py` follows it
+the tip of that path): `src/btclib_ecc/ecc/musig2.py` follows it
 function for function, and copies four of its error message strings
 verbatim because the `error.message` field of a case is compared byte
 for byte. That file is not vendored — it is an implementation, not data,
@@ -345,7 +345,7 @@ send (btclib-org/btclib#2160, closed by the same change that added it). With the
 branch named, the pins below are checked exactly as a default-branch
 pin is.
 
-`src/ellipticcurves/ecc/frost.py` follows `bip-0445/python/frost_ref/signing.py`
+`src/btclib_ecc/ecc/frost.py` follows `bip-0445/python/frost_ref/signing.py`
 function for function, checked against it rather than assumed from the
 BIP327 ancestry the reference's own header claims: several shapes that
 read alike are not the same function, the tweak-range error message
@@ -724,7 +724,7 @@ rather than twice.
 The SHAKE files need one thing the others do not, and it is a type
 rather than a reader: `hashlib.shake_128` is not a `HashF`, an
 extendable-output function having no output length of its own, so
-`_PinnedXof` in that module pins one and `src/ellipticcurves/alias.py`
+`_PinnedXof` in that module pins one and `src/btclib_ecc/alias.py`
 says why the package does not. The pinned length is `n_size` and any
 length above it is the same test, `challenge_` reading the leftmost
 `nlen` bits of a digest whose longer forms have these very bytes as
@@ -929,7 +929,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**. Key agreement, with the public key X.509-encoded
 rather than a bare point: the invalid-curve, twist and wrong-curve cases
-`ellipticcurves.ecc.dh` has no other vectors for.
+`btclib_ecc.ecc.dh` has no other vectors for.
 
 ### `tests/ecc/_data/ecdh_secp256k1_webcrypto_test.json`
 
@@ -1149,7 +1149,7 @@ arguments that produced it and what that library then said about it.
 It is here because `tests/ecc/rangeproof_test.py` would otherwise
 measure nothing in an unflagged build: the flagged extension those
 calls need is what a btclib-secp256k1 installed from its sdist with
-`BTCLIB_LIBSECP256K1_ZKP` has, and `ellipticcurves.ecc.rangeproof` reads a
+`BTCLIB_LIBSECP256K1_ZKP` has, and `btclib_ecc.ecc.rangeproof` reads a
 format no other vector file in this tree carries.
 
 **Recording another is this file's own arguments.** A rangeproof draws
@@ -1205,8 +1205,8 @@ curve entry, and a synthetic scalar pair for the wide-element one:
 
 ```shell
 uv run --locked --with cryptography python - <<'EOF'
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.ecc import dsa
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.ecc import dsa
 from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature)
 

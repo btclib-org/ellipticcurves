@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.dleq` module.
+"""Tests for the `btclib_ecc.ecc.dleq` module.
 
 The vectors are BIP374's own, both csv files of
 https://github.com/bitcoin/bips/tree/master/bip-0374, vendored under
@@ -16,9 +16,9 @@ produced.
 
 import pytest
 
-from ellipticcurves.curves import mult, point_from_pub_key, secp256k1
-from ellipticcurves.ecc import dleq
-from ellipticcurves.exceptions import EllipticCurvesValueError
+from btclib_ecc.curves import mult, point_from_pub_key, secp256k1
+from btclib_ecc.ecc import dleq
+from btclib_ecc.exceptions import BTClibEccValueError
 from tests import load_csv, vector_id
 
 # what the generation file writes in the proof column of a case that must
@@ -47,7 +47,7 @@ def test_generate_proof_vectors(
         # a = 0, a = n, and B at infinity: the conditions BIP374 fails on
         # before any arithmetic, and none of the three is expressible as a
         # this package private key or public key in the first place
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             dleq.generate_proof(a, B, aux, G, m)
         return
 
@@ -74,7 +74,7 @@ def test_verify_proof_vectors(
     if expected:
         dleq.assert_proof_as_valid(A, B, C, proof, G, m)
     else:
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             dleq.assert_proof_as_valid(A, B, C, proof, G, m)
 
 
@@ -114,11 +114,11 @@ def test_the_message_is_32_bytes_or_absent() -> None:
     A, C = mult(a), mult(a, B)
     good = dleq.generate_proof(a, B, msg="00" * 32)
     for msg in ("", "00" * 31, "00" * 33):
-        with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+        with pytest.raises(BTClibEccValueError, match="invalid size"):
             dleq.generate_proof(a, B, msg=msg)
-        with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+        with pytest.raises(BTClibEccValueError, match="invalid size"):
             dleq.verify_proof(A, B, C, good, msg=msg)
-        with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+        with pytest.raises(BTClibEccValueError, match="invalid size"):
             dleq.assert_proof_as_valid(A, B, C, good, msg=msg)
 
     # b"" cannot stand in for "no message": an empty message would hash
@@ -145,7 +145,7 @@ def test_a_proof_is_64_bytes() -> None:
 
     for damaged in (proof[:-1], proof + b"\x00", b""):
         for call in (dleq.verify_proof, dleq.assert_proof_as_valid):
-            with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+            with pytest.raises(BTClibEccValueError, match="invalid size"):
                 call(A, B, C, damaged)
 
 
@@ -171,7 +171,7 @@ def test_an_s_of_n_or_more_is_refused() -> None:
 
     for s in (secp256k1.n, 2**256 - 1):
         forged = e + s.to_bytes(32, "big")
-        with pytest.raises(EllipticCurvesValueError, match="s not in 0..n-1"):
+        with pytest.raises(BTClibEccValueError, match="s not in 0..n-1"):
             dleq.assert_proof_as_valid(A, B, C, forged)
         assert dleq.verify_proof(A, B, C, forged) is False
 
@@ -189,11 +189,11 @@ def test_a_nonce_point_at_infinity_is_refused() -> None:
     proof = e.to_bytes(32, "big") + e.to_bytes(32, "big")
 
     # A == G and s == e: R1 = (s - e)*G
-    with pytest.raises(EllipticCurvesValueError, match="invalid \\(INF\\) R1"):
+    with pytest.raises(BTClibEccValueError, match="invalid \\(INF\\) R1"):
         dleq.assert_proof_as_valid(secp256k1.G, mult(3), mult(5), proof)
 
     # A == 2*G leaves R1 alone, and B == C sends R2 to infinity instead
-    with pytest.raises(EllipticCurvesValueError, match="invalid \\(INF\\) R2"):
+    with pytest.raises(BTClibEccValueError, match="invalid \\(INF\\) R2"):
         dleq.assert_proof_as_valid(mult(2), mult(3), mult(3), proof)
 
 
@@ -202,13 +202,13 @@ def test_a_generator_that_is_no_point_is_refused() -> None:
     a = 0xC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9
     B = mult(2)
     for G in ("02" + "00" * 32, "not a point", (1, 2)):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             dleq.generate_proof(a, B, G=G)
         # and refused by the verification too, rather than reported as a
         # proof that does not hold: the generator is a point of the
         # curve or it is nothing, `point_from_pub_key` proving it while
         # reading it (issue btclib-org/btclib#2170)
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             dleq.verify_proof(mult(a), B, mult(a, B), "00" * 64, G)
 
 
@@ -237,11 +237,11 @@ def test_verify_proof_tells_a_malformed_argument_from_one_that_fails() -> None:
         (A, B, no_point, proof),
         (A, B, C, proof, no_point),
     ):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             dleq.verify_proof(*arguments)
 
     # and a proof of any other length, which is BIP374's own assertion
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         dleq.verify_proof(A, B, C, proof[:-1])
 
     # well formed, and merely not the proof of this triple: another
@@ -259,5 +259,5 @@ def test_verify_proof_tells_a_malformed_argument_from_one_that_fails() -> None:
     # AssertionError there rather than a proof that does not hold. An
     # absent message is not a wrong one and stays the default
     for size in (31, 33, 0):
-        with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+        with pytest.raises(BTClibEccValueError, match="invalid size"):
             dleq.verify_proof(A, B, C, proof, msg="00" * size)

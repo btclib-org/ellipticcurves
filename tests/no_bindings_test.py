@@ -4,7 +4,7 @@
 
 """The package with btclib_secp256k1 not installed, which is a subprocess.
 
-`ellipticcurves._libsecp256k1` asks for the bindings once, at import, and
+`btclib_ecc._libsecp256k1` asks for the bindings once, at import, and
 `curves.curve._libsecp256k1_available` is that answer; so the question
 this file asks -- does the package import and answer without them --
 can only be asked of an interpreter that has not imported it yet. A
@@ -14,7 +14,7 @@ its answer is bound.
 Uninstalling them is not an option either, the suite being one
 environment. So the bindings are put out of reach by a meta path finder
 that refuses the name, in a child interpreter, and the package is
-imported after that -- which is what `import ellipticcurves` does on a
+imported after that -- which is what `import btclib_ecc` does on a
 machine that never had them.
 
 This is not `test.yml`'s `no-bindings` job and does not replace it: a finder
@@ -47,8 +47,8 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
-from ellipticcurves.curves import (
+from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
+from btclib_ecc.curves import (
     bytes_from_point,
     curve,
     is_libsecp256k1_serving,
@@ -57,9 +57,9 @@ from ellipticcurves.curves import (
     secp256k1,
     set_libsecp256k1_serving,
 )
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.ecc import dsa, ssa
-from ellipticcurves.exceptions import EllipticCurvesException, EllipticCurvesValueError
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.ecc import dsa, ssa
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from tests import needs_bindings
 
 # the key and message the child works from: constants, because the two
@@ -89,11 +89,11 @@ class RefuseTheBindings:
 
 sys.meta_path.insert(0, RefuseTheBindings())
 
-import ellipticcurves
-from ellipticcurves._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
-from ellipticcurves.curves import curve, mult
-from ellipticcurves.ecc import dh, dsa, ellswift, ssa
-from ellipticcurves.exceptions import EllipticCurvesValueError
+import btclib_ecc
+from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
+from btclib_ecc.curves import curve, mult
+from btclib_ecc.ecc import dh, dsa, ellswift, ssa
+from btclib_ecc.exceptions import BTClibEccValueError
 
 assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
 
@@ -147,8 +147,8 @@ def test_the_package_answers_with_the_bindings_out_of_reach() -> None:
     costs to run.
 
     The child imports guarded modules beyond the ones it then calls:
-    `src/ellipticcurves/__init__.py` imports nothing eagerly, so `import
-    ellipticcurves` is the metadata lookup and no module at all, and a
+    `src/btclib_ecc/__init__.py` imports nothing eagerly, so `import
+    btclib_ecc` is the metadata lookup and no module at all, and a
     guard nothing imports is a guard nothing checks. `ecc.dh` and
     `ecc.ellswift` are the two the calls below would not reach on their
     own.
@@ -173,12 +173,12 @@ def test_the_package_answers_with_the_bindings_out_of_reach() -> None:
 
 @needs_bindings
 def test_the_environment_variable_refuses_the_installed_bindings() -> None:
-    """`ELLIPTICCURVES_NO_LIBSECP256K1` settles the question before import.
+    """`BTCLIB_ECC_NO_LIBSECP256K1` settles the question before import.
 
     A public function cannot do this job on its own:
-    `ellipticcurves._libsecp256k1` answers at import, so a caller that wants the
+    `btclib_ecc._libsecp256k1` answers at import, so a caller that wants the
     Python arithmetic from the first call has to say so before the interpreter
-    reaches `import ellipticcurves`. A test runner is exactly that caller, which
+    reaches `import btclib_ecc`. A test runner is exactly that caller, which
     is why the variable exists beside `set_libsecp256k1_serving` rather than
     instead of it.
 
@@ -186,8 +186,8 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
     two -- so the assertion is the same as the child above makes.
     """
     probe = (
-        "from ellipticcurves._libsecp256k1 import ENABLED, INSTALLED;"
-        "from ellipticcurves.curves import is_libsecp256k1_serving;"
+        "from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED;"
+        "from btclib_ecc.curves import is_libsecp256k1_serving;"
         "print(INSTALLED, ENABLED, is_libsecp256k1_serving())"
     )
     answered = subprocess.run(  # noqa: S603
@@ -221,9 +221,7 @@ def test_the_switch_refuses_to_promise_bindings_that_are_not_there(
     impossible.
     """
     monkeypatch.setattr(curve, "_bindings_installed", False)
-    with pytest.raises(
-        EllipticCurvesValueError, match="btclib_secp256k1 is not installed"
-    ):
+    with pytest.raises(BTClibEccValueError, match="btclib_secp256k1 is not installed"):
         set_libsecp256k1_serving(serving=True)
 
     # try/finally and not a monkeypatch for the restore: monkeypatch puts
@@ -312,10 +310,10 @@ class RefuseTheBindings:
 
 sys.meta_path.insert(0, RefuseTheBindings())
 
-from ellipticcurves._libsecp256k1 import INSTALLED
-from ellipticcurves.curves import curve, point_from_octets
-from ellipticcurves.ecc import dsa
-from ellipticcurves.exceptions import EllipticCurvesException
+from btclib_ecc._libsecp256k1 import INSTALLED
+from btclib_ecc.curves import curve, point_from_octets
+from btclib_ecc.ecc import dsa
+from btclib_ecc.exceptions import BTClibEccException
 
 assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
 
@@ -323,7 +321,7 @@ assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
 def refused(call):
     try:
         call()
-    except EllipticCurvesException as e:
+    except BTClibEccException as e:
         return [type(e).__name__, str(e)]
     return None  # a call this table names but does not refuse is the finding
 
@@ -361,7 +359,7 @@ def _refusal_child_answers() -> dict[str, Any]:
 
 def _locally_refused(call: Callable[[], object]) -> tuple[str, str]:
     """Run call with the bindings in reach and return what it raised."""
-    with pytest.raises(EllipticCurvesException) as excinfo:
+    with pytest.raises(BTClibEccException) as excinfo:
         call()
     return type(excinfo.value).__name__, str(excinfo.value)
 

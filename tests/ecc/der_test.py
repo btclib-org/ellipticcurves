@@ -2,16 +2,16 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.dsa` module."""
+"""Tests for the `btclib_ecc.ecc.dsa` module."""
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import dsa as libsecp256k1_dsa
-from ellipticcurves.curves import secp256k1
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.ecc import dsa
-from ellipticcurves.ecc.dsa import Sig
-from ellipticcurves.exceptions import EllipticCurvesValueError
+from btclib_ecc._libsecp256k1 import dsa as libsecp256k1_dsa
+from btclib_ecc.curves import secp256k1
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.ecc import dsa
+from btclib_ecc.ecc.dsa import Sig
+from btclib_ecc.exceptions import BTClibEccValueError
 from tests import load, needs_bindings
 
 ec = secp256k1
@@ -144,14 +144,14 @@ def test_der_sequence_length_refuses_the_long_form() -> None:
     assert good[1] < 0x80
     long_form = good[:1] + bytes([0x81, good[1]]) + good[2:]
     err_msg = "invalid DER length"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig.parse(long_form)
 
 
 def test_der_deserialize() -> None:
     """Refuse each malformed DER field with its own message."""
     err_msg = "invalid hex string: non-hexadecimal number found "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig.parse("not a sig")
 
     sig = Sig(2**255 - 4, 2**247 - 1)
@@ -160,56 +160,56 @@ def test_der_deserialize() -> None:
 
     bad_sig_bin = b"\x31" + sig_bin[1:]
     err_msg = "invalid compound header: "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig.parse(bad_sig_bin)
 
-    # a length overrunning the buffer is the DER being malformed, so it is an
-    # EllipticCurvesValueError: a caller filtering parse failures on
-    # EllipticCurvesValueError would not catch an EllipticCurvesRuntimeError
+    # a length overrunning the buffer is the DER being malformed, so it is a
+    # BTClibEccValueError: a caller filtering parse failures on
+    # BTClibEccValueError would not catch a BTClibEccRuntimeError
     bad_sig_bin = sig_bin[:1] + b"\x41" + sig_bin[2:]
     err_msg = "invalid DER length: not enough binary data"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig.parse(bad_sig_bin)
 
     # r and s scalars
     for offset in (4, 6 + r_size):
         bad_sig_bin = sig_bin[: offset - 2] + b"\x00" + sig_bin[offset - 1 :]
         err_msg = "invalid value header: "
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
         bad_sig_bin = sig_bin[: offset - 1] + b"\x00" + sig_bin[offset:]
         err_msg = "invalid DER length: zero size"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
         bad_sig_bin = sig_bin[: offset - 1] + b"\x80" + sig_bin[offset:]
         err_msg = "invalid DER length: not enough binary data"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
         bad_sig_bin = sig_bin[:offset] + b"\x80" + sig_bin[offset + 1 :]
         err_msg = "invalid negative scalar"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
         # 0x80 itself is not the only negative first byte: `>= 0x80`
         # weakened to `== 0x80` would miss every byte above it
         bad_sig_bin = sig_bin[:offset] + b"\xff" + sig_bin[offset + 1 :]
         err_msg = "invalid negative scalar"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
         bad_sig_bin = sig_bin[:offset] + b"\x00\x7f" + sig_bin[offset + 2 :]
         err_msg = "invalid 'highest bit set' padding"
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
     data_size = sig_bin[1]
     malleated_size = (data_size + 1).to_bytes(1, byteorder="big", signed=False)
     bad_sig_bin = sig_bin[:1] + malleated_size + sig_bin[2:] + b"\x01"
     err_msg = "invalid DER sequence length"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig.parse(bad_sig_bin)
 
 
@@ -225,7 +225,7 @@ def test_der_one_byte_scalar() -> None:
     """
     for strict in (True, False):
         err_msg = "scalar r not in 1..n-1: "
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse("3006020100020100", strict=strict)
 
         # check_validity=False asks for the numbers those bytes spell,
@@ -235,7 +235,7 @@ def test_der_one_byte_scalar() -> None:
 
     # a single byte with the highest bit set is still a negative scalar
     err_msg = "invalid negative scalar"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig.parse("3006020180020180")
     sig = Sig.parse("3006020180020180", check_validity=False, strict=False)
     assert (sig.r, sig.s) == (0x80, 0x80)
@@ -250,17 +250,17 @@ def test_der_serialize() -> None:
     err_msg = "scalar r not in 1..n-1: "
     for bad_r in (0, ec.n):
         _ = Sig(bad_r, s, check_validity=False)
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig(bad_r, s)
 
     err_msg = "scalar s not in 1..n-1: "
     for bad_s in (0, ec.n):
         _ = Sig(r, bad_s, check_validity=False)
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig(r, bad_s)
 
     err_msg = r"r is not \(congruent to\) a valid x-coordinate: "
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         Sig(5, s)
 
 
@@ -344,7 +344,7 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
     assert libsecp256k1_dsa.to_compact(good) == compact
 
     for name, bad in _malformed(good):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             Sig.parse(bad, check_validity=False)
         assert not libsecp256k1_dsa.signature_verify(bad), name
 
@@ -359,7 +359,7 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
         ("r", _sequence(_element(b"\x80" + r_value[1:]), s), slice(0, 32)),
         ("s", _sequence(r, _element(b"\x80" + s_value[1:])), slice(32, 64)),
     ):
-        with pytest.raises(EllipticCurvesValueError, match="invalid negative scalar"):
+        with pytest.raises(BTClibEccValueError, match="invalid negative scalar"):
             Sig.parse(bad, check_validity=False)
         assert libsecp256k1_dsa.signature_verify(bad), name
         # what it read is the zero scalar, not the value those octets spell

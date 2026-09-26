@@ -24,7 +24,7 @@ from typing import Protocol
 import pytest
 from hypothesis import settings
 
-from ellipticcurves._libsecp256k1 import INSTALLED
+from btclib_ecc._libsecp256k1 import INSTALLED
 from tests import ZKP_AVAILABLE
 
 # The deadline is a per-example time limit, measured on a run whose cost

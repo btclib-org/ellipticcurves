@@ -24,7 +24,7 @@ call to `_libsecp256k1_serves` is an arm -- so one added without an entry
 here fails. And the entries were measured, not reasoned:
 
     uv run --locked --no-default-groups --group harness \
-        pytest <one module> --cov=ellipticcurves --cov-report=json \
+        pytest <one module> --cov=btclib_ecc --cov-report=json \
         --cov-fail-under=0
 
 in an environment with no bindings installed, reading back which lines of
@@ -68,7 +68,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-_LIBRARY = Path(__file__).parents[1] / "src" / "ellipticcurves"
+_LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
 _TESTS = Path(__file__).parent
 
 # the vendored vectors each module below is built on, by the name they

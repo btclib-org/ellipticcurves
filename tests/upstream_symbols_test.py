@@ -106,7 +106,7 @@ worth naming rather than inferring:
 - **markdown is not read.** `CHANGELOG.md` is appended to and its
   released sections are not rewritten, so a credit that landed in one
   cannot be corrected and a gate over it would be red with no repair
-  available. The swept files are `src/ellipticcurves` and `tests`, where
+  available. The swept files are `src/btclib_ecc` and `tests`, where
   a credit sits beside the code it describes and can still be edited.
 
 **The attribution sweep is part of the first of those bullets.** A
@@ -183,7 +183,7 @@ _PUBLISHED = frozenset(
 
 # where a credit sits beside the code it describes: the package and its
 # suite, this module included
-_SWEPT = ("src/ellipticcurves", "tests")
+_SWEPT = ("src/btclib_ecc", "tests")
 
 # a C identifier of the library's family, anchored on the left so that a
 # longer identifier ending in one is not read as one: `ecc.dsa`'s own
@@ -333,7 +333,7 @@ def test_the_sweep_reads_the_tree_rather_than_an_empty_list() -> None:
     a paragraph the tree really carries -- `curves.curve_group`'s
     account of what a random Z buys -- and asks the same helpers for it.
     """
-    source = (_ROOT / "src" / "ellipticcurves" / "curves" / "curve_group.py").read_text(
+    source = (_ROOT / "src" / "btclib_ecc" / "curves" / "curve_group.py").read_text(
         encoding="utf-8"
     )
     credited = {

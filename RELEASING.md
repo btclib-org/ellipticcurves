@@ -1,4 +1,4 @@
-# Releasing ellipticcurves
+# Releasing btclib-ecc
 
 Releases are published by GitHub Actions
 ([release.yml](./.github/workflows/release.yml)), not from a developer
@@ -89,7 +89,7 @@ anywhere. The upload PyPI accepts turns its pending entry into an ordinary
 one, and TestPyPI's rehearsal does the same there.
 
 1. On [PyPI](https://pypi.org/manage/account/publishing/), add a trusted
-   publisher: PyPI project name `ellipticcurves`, owner `btclib-org`,
+   publisher: PyPI project name `btclib-ecc`, owner `btclib-org`,
    repository `ellipticcurves`, workflow `release.yml`,
    environment `pypi`.
 
@@ -123,7 +123,7 @@ A rehearsal runs the identical pipeline — lint gate, test matrix, the
 `dist` job's build, its packaging checks (twine, check-wheel-contents,
 pyroma) and its wheel smoke test — and publishes the very files those
 checks passed to
-[TestPyPI](https://test.pypi.org/project/ellipticcurves/) instead of
+[TestPyPI](https://test.pypi.org/project/btclib-ecc/) instead of
 PyPI, so what `release.yml` publishes and what `test.yml` checked are
 the same files (issue btclib-org/btclib#1166).
 
@@ -176,8 +176,8 @@ the tag exercises the first.
    uv run --isolated --no-project \
      --index https://test.pypi.org/simple/ \
      --index-strategy unsafe-best-match \
-     --with "ellipticcurves==${dev:?}" \
-     python -c "import ellipticcurves; print(ellipticcurves.__version__)"
+     --with "btclib-ecc==${dev:?}" \
+     python -c "import btclib_ecc; print(btclib_ecc.__version__)"
    ```
 
 1. Check that the `attest` job is green. It signs a rehearsal's files too,
@@ -251,7 +251,7 @@ result.
    whether the list is right, but whether it is complete:
 
    ```shell
-   uv run --locked --with griffe griffe check ellipticcurves \
+   uv run --locked --with griffe griffe check btclib_ecc \
        -a v<previous version>
    ```
 
@@ -364,7 +364,7 @@ result.
 
 1. Run `uv run pre-commit run --all-files` and `uv run pytest --cov`
    before pressing anything, then verify the
-   [read the docs](https://readthedocs.org/projects/ellipticcurves/builds/)
+   [read the docs](https://readthedocs.org/projects/btclib-ecc/builds/)
    build renders. Read the *builds* page and not only the rendered one: a
    site that answers 200 may be serving the last build that succeeded,
    the webhook having quietly refused every delivery since.
@@ -530,8 +530,8 @@ result.
    than one that may already hold it, and run something with it:
 
    ```shell
-   uv run --isolated --no-project --with ellipticcurves \
-     python -c "import ellipticcurves; print(ellipticcurves.__version__)"
+   uv run --isolated --no-project --with btclib-ecc \
+     python -c "import btclib_ecc; print(btclib_ecc.__version__)"
    ```
 
    from a directory that belongs to no checkout of this project: run
@@ -540,7 +540,7 @@ result.
 
    then check the attestations — the JSON API answers `null` for
    `provenance` even where they exist; the
-   [simple API](https://pypi.org/simple/ellipticcurves/) (`Accept:
+   [simple API](https://pypi.org/simple/btclib-ecc/) (`Accept:
    application/vnd.pypi.simple.v1+json`) carries the real link, under
    `/integrity/<project>/<version>/<filename>/provenance`, and
    `pypi-attestations verify pypi <file> --repository
@@ -588,7 +588,7 @@ result.
    replacing by hand if it ever fires.
 
 1. Read the bill of materials attached to the release,
-   `ellipticcurves-<version>.cdx.json`: a CycloneDX 1.6 document naming
+   `btclib_ecc-<version>.cdx.json`: a CycloneDX 1.6 document naming
    the distribution, its licence, the two files with their SHA-256, and
    one component per dependency the wheel's metadata declares. It is read
    out of the built wheel and not out of `pyproject.toml`, which is what
@@ -608,7 +608,7 @@ result.
 
    ```shell
    gh release download "v${version:?}" --repo btclib-org/ellipticcurves &&
-   wheel=ellipticcurves-${version:?}-py3-none-any.whl &&
+   wheel=btclib_ecc-${version:?}-py3-none-any.whl &&
    repo=btclib-org/ellipticcurves &&
    signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
    gh attestation verify "$wheel" --repo "$repo" \
@@ -696,11 +696,11 @@ uv run --no-project --python "$python" \
   .github/scripts/normalize_sdist.py dist/ &&
 uv run --no-project --python "$python" \
   .github/scripts/generate_sbom.py dist/ sbom/ &&
-gh attestation verify "dist/ellipticcurves-${version:?}.tar.gz" \
+gh attestation verify "dist/btclib_ecc-${version:?}.tar.gz" \
   --repo "$repo" --signer-workflow "$signer" &&
-gh attestation verify "dist/ellipticcurves-${version:?}-py3-none-any.whl" \
+gh attestation verify "dist/btclib_ecc-${version:?}-py3-none-any.whl" \
   --repo "$repo" --signer-workflow "$signer" &&
-gh attestation verify "sbom/ellipticcurves-${version:?}.cdx.json" \
+gh attestation verify "sbom/btclib_ecc-${version:?}.cdx.json" \
   --repo "$repo" --signer-workflow "$signer"
 ```
 
@@ -849,7 +849,7 @@ reading a mismatch as tampering:
   gh run download "${run:?}" -n sbom -D sbom &&
   gh run download "${run:?}" -n attestation -D attestation &&
   shasum -a 256 dist/* &&
-  curl -s "https://pypi.org/pypi/ellipticcurves/${version:?}/json" \
+  curl -s "https://pypi.org/pypi/btclib-ecc/${version:?}/json" \
     | python3 -c 'import json,sys; d=json.load(sys.stdin)
   [print(u["filename"], u["digests"]["sha256"]) for u in d["urls"]]' &&
 

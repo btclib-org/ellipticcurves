@@ -11,7 +11,7 @@ assert that a decoder accepts the right things -- the vectors do that --
 but that it *fails the way the package says it fails*, whatever it is
 handed: an IndexError off a short slice, an OverflowError off an
 unchecked size or a silent short read reaches a caller who catches
-`EllipticCurvesValueError` to reject bad input and has no reason to
+`BTClibEccValueError` to reject bad input and has no reason to
 expect anything else.
 
 `fuzz/`'s atheris harnesses ask the same question of the signature and
@@ -29,23 +29,23 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from ellipticcurves.curves.sec_point import point_from_octets
-from ellipticcurves.ecc import dsa, ecies, ssa
-from ellipticcurves.ecc.borromean import BorromeanSig
-from ellipticcurves.ecc.rangeproof import RangeProof
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.curves.sec_point import point_from_octets
+from btclib_ecc.ecc import dsa, ecies, ssa
+from btclib_ecc.ecc.borromean import BorromeanSig
+from btclib_ecc.ecc.rangeproof import RangeProof
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
 )
 from tests import public_classes_with
 
 # What a decoder of this package is allowed to raise. Anything else
-# leaves the contract src/ellipticcurves/exceptions.py documents
+# leaves the contract src/btclib_ecc/exceptions.py documents
 CONTRACT = (
-    EllipticCurvesValueError,
-    EllipticCurvesTypeError,
-    EllipticCurvesRuntimeError,
+    BTClibEccValueError,
+    BTClibEccTypeError,
+    BTClibEccRuntimeError,
 )
 
 # Bounded because these are decoders, not benchmarks: what a length field
@@ -162,7 +162,7 @@ def test_text_parser_honors_the_exception_contract(
 # mutation lands in: a flipped length asks for octets the buffer does
 # not hold, and a flipped integer length moves the boundary between r
 # and s
-DSA_SIG_BIN = dsa.sign(b"ellipticcurves", 1).serialize()
+DSA_SIG_BIN = dsa.sign(b"btclib_ecc", 1).serialize()
 # a BIE1 envelope, whose magic, ephemeral key, ciphertext and MAC sit at
 # fixed offsets: a truncation or an extension lands in the ciphertext's
 # block alignment, and a flipped octet in the key's prefix or on its

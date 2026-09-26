@@ -1,7 +1,7 @@
-ellipticcurves
-==============
+btclib_ecc
+==========
 
 .. toctree::
    :maxdepth: 4
 
-   ellipticcurves
+   btclib_ecc

@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.musig2` module.
+"""Tests for the `btclib_ecc.ecc.musig2` module.
 
 The vectors are BIP327's own, all eight files of
 https://github.com/bitcoin/bips/tree/master/bip-0327/vectors, vendored
@@ -47,17 +47,17 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import INSTALLED
-from ellipticcurves.curves import (
+from btclib_ecc._libsecp256k1 import INSTALLED
+from btclib_ecc.curves import (
     bytes_from_point,
     is_libsecp256k1_serving,
     mult,
     secp256k1,
 )
-from ellipticcurves.ecc import musig2, ssa
-from ellipticcurves.exceptions import (
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.ecc import musig2, ssa
+from btclib_ecc.exceptions import (
+    BTClibEccTypeError,
+    BTClibEccValueError,
     InvalidContributionError,
 )
 from tests import load, needs_bindings, needs_zkp, vector_id
@@ -66,7 +66,7 @@ if INSTALLED:
     from btclib_secp256k1 import musig as libsecp256k1_musig
 else:  # pragma: no cover -- only the no-bindings job reaches this
     # never called from a skipped test, mirroring the fallback
-    # `ellipticcurves._libsecp256k1` gives every name it wraps
+    # `btclib_ecc._libsecp256k1` gives every name it wraps
     libsecp256k1_musig = None  # type: ignore[assignment]
 
 # `INSTALLED`, not `tests.ZKP_AVAILABLE`: `btclib_secp256k1.zkp.musig`'s
@@ -86,7 +86,7 @@ else:  # pragma: no cover -- only the no-bindings job reaches this
 
 # the two exception types BIP327 tells apart: a caller's own bad
 # argument, and a peer's bad contribution
-_ERRORS = (EllipticCurvesValueError, InvalidContributionError)
+_ERRORS = (BTClibEccValueError, InvalidContributionError)
 
 
 def _hex_all(values: list[str]) -> list[bytes]:
@@ -110,7 +110,7 @@ def assert_error(error: dict[str, Any], exc: Exception) -> None:
         assert exc.contrib == error["contrib"]
     else:
         assert error["type"] == "value"
-        assert isinstance(exc, EllipticCurvesValueError)
+        assert isinstance(exc, BTClibEccValueError)
         # the message, byte for byte: the four BIP327 strings this package
         # copies verbatim are the reason it can be compared at all
         assert str(exc) == error["message"]
@@ -819,9 +819,9 @@ def test_partial_sig_verify_reuses_the_bindings_session() -> None:
 
     `skipif` on `is_libsecp256k1_serving`, not `needs_bindings`: the two
     ask different questions (`INSTALLED` against `ENABLED`, in
-    `ellipticcurves._libsecp256k1`'s own naming), and this test is about whether
+    `btclib_ecc._libsecp256k1`'s own naming), and this test is about whether
     `partial_sig_verify_` actually delegates -- false under
-    `ELLIPTICCURVES_NO_LIBSECP256K1=1` although the bindings remain installed,
+    `BTCLIB_ECC_NO_LIBSECP256K1=1` although the bindings remain installed,
     which `needs_bindings` alone would not catch.
     """
     pk_1 = musig2.individual_pub_key(_SK_1)
@@ -844,7 +844,7 @@ def test_partial_sig_verify_reuses_the_bindings_session() -> None:
     reason="partial_sig_verify_ takes the Python arm here, its own _cpoint",
 )
 def test_partial_sig_verify_refuses_a_malformed_own_pub_nonce() -> None:
-    """The delegated arm refuses a bad own nonce with EllipticCurvesValueError.
+    """The delegated arm refuses a bad own nonce with BTClibEccValueError.
 
     No BIP327 vector reaches this path directly: sign_verify_vectors.json's
     own invalid-pubnonce case is caught by `nonce_agg`, inside
@@ -860,7 +860,7 @@ def test_partial_sig_verify_refuses_a_malformed_own_pub_nonce() -> None:
         musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG32
     )
     psig = musig2.sign(sec_nonce, _SK_1, session_ctx)
-    with pytest.raises(EllipticCurvesValueError, match="invalid pubnonce or pubkey"):
+    with pytest.raises(BTClibEccValueError, match="invalid pubnonce or pubkey"):
         musig2.partial_sig_verify_(psig, bytes(66), pk_1, session_ctx)
 
 
@@ -875,7 +875,7 @@ def test_partial_sig_verify_refuses_a_foreign_pub_key() -> None:
     either way, never the delegated arm's own parse-failure message. Run
     unconditionally, like the adaptor test above: both arms reach the
     same membership check on this input, so there is nothing here for
-    `ELLIPTICCURVES_NO_LIBSECP256K1=1` to change.
+    `BTCLIB_ECC_NO_LIBSECP256K1=1` to change.
     """
     pk_1 = musig2.individual_pub_key(_SK_1)
     pk_2 = musig2.individual_pub_key(_SK_2)  # never joins the session
@@ -884,7 +884,7 @@ def test_partial_sig_verify_refuses_a_foreign_pub_key() -> None:
         musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG32
     )
     psig = musig2.sign(sec_nonce, _SK_1, session_ctx)
-    with pytest.raises(EllipticCurvesValueError, match="must be included in the list"):
+    with pytest.raises(BTClibEccValueError, match="must be included in the list"):
         musig2.partial_sig_verify_(psig, pub_nonce, pk_2, session_ctx)
 
 
@@ -900,7 +900,7 @@ def test_partial_sig_verify_takes_the_py_arm_for_an_adaptor_session() -> None:
     Python arm's adaptor-aware one. Run unconditionally, unlike the two
     tests above: `session_ctx._bindings_ctx` staying `None` is correct
     whether that is this guard or the bindings not serving at all, so
-    there is nothing here for `ELLIPTICCURVES_NO_LIBSECP256K1=1` to break.
+    there is nothing here for `BTCLIB_ECC_NO_LIBSECP256K1=1` to break.
     """
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG32)
@@ -998,7 +998,7 @@ def test_partial_sig_agg_and_its_adaptor_twin_refuse_each_others_sessions() -> N
         musig2.nonce_agg([pub_nonce_plain]), [pk_1], [], [], _MSG
     )
     psig_plain = musig2.sign(sec_nonce_plain, _SK_1, plain_ctx)
-    with pytest.raises(EllipticCurvesValueError, match="call partial_sig_agg instead"):
+    with pytest.raises(BTClibEccValueError, match="call partial_sig_agg instead"):
         musig2.partial_sig_agg_adaptor([psig_plain], plain_ctx)
 
     sec_nonce_adp, pub_nonce_adp = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
@@ -1009,7 +1009,7 @@ def test_partial_sig_agg_and_its_adaptor_twin_refuse_each_others_sessions() -> N
     )
     psig_adp = musig2.sign(sec_nonce_adp, _SK_1, adaptor_ctx)
     with pytest.raises(
-        EllipticCurvesValueError, match="call partial_sig_agg_adaptor instead"
+        BTClibEccValueError, match="call partial_sig_agg_adaptor instead"
     ):
         musig2.partial_sig_agg([psig_adp], adaptor_ctx)
 
@@ -1155,7 +1155,7 @@ def test_sec_nonce_signs_once() -> None:
     # the bytearray has been zeroed, which is the whole defence
     assert bytes(sec_nonce[:64]) == bytes(64)
     with pytest.raises(
-        EllipticCurvesValueError, match="first secnonce value is out of range"
+        BTClibEccValueError, match="first secnonce value is out of range"
     ):
         musig2.sign(sec_nonce, _SK_1, session_ctx)
 
@@ -1171,7 +1171,7 @@ def test_sec_nonce_second_half_out_of_range() -> None:
         musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG
     )
     with pytest.raises(
-        EllipticCurvesValueError, match="second secnonce value is out of range"
+        BTClibEccValueError, match="second secnonce value is out of range"
     ):
         musig2.sign(sec_nonce, _SK_1, session_ctx)
 
@@ -1202,9 +1202,7 @@ def test_sec_nonce_of_another_key() -> None:
     session_ctx = musig2.SessionContext(
         musig2.nonce_agg([pub_nonce]), [pk_1, pk_2], [], [], _MSG
     )
-    with pytest.raises(
-        EllipticCurvesValueError, match="does not match nonce_gen argument"
-    ):
+    with pytest.raises(BTClibEccValueError, match="does not match nonce_gen argument"):
         musig2.sign(sec_nonce, _SK_2, session_ctx)
 
 
@@ -1279,9 +1277,9 @@ def test_key_agg_coeff_cache_is_invisible_to_equality() -> None:
 def test_tweaks_and_is_xonly_pair_up() -> None:
     """Verify tweaks and is_xonly of unequal lengths are refused."""
     pk_1 = musig2.individual_pub_key(_SK_1)
-    with pytest.raises(EllipticCurvesValueError, match="must have the same length"):
+    with pytest.raises(BTClibEccValueError, match="must have the same length"):
         musig2.key_agg_and_tweak([pk_1], [bytes(32)], [])
-    with pytest.raises(EllipticCurvesValueError, match="must have the same length"):
+    with pytest.raises(BTClibEccValueError, match="must have the same length"):
         musig2.SessionContext(bytes(66), [pk_1], [bytes(32)], [], _MSG)
 
 
@@ -1297,11 +1295,11 @@ def test_the_kind_of_a_tweak_is_a_bool(not_a_flag: Any) -> None:
     """
     pk_1 = musig2.individual_pub_key(_SK_1)
     key_agg_ctx = musig2.key_agg([pk_1])
-    with pytest.raises(EllipticCurvesTypeError, match="invalid is_xonly type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid is_xonly type"):
         musig2.apply_tweak(key_agg_ctx, bytes(32), not_a_flag)
-    with pytest.raises(EllipticCurvesTypeError, match="invalid is_xonly type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid is_xonly type"):
         musig2.key_agg_and_tweak([pk_1], [bytes(32)], [not_a_flag])
-    with pytest.raises(EllipticCurvesTypeError, match="invalid is_xonly type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid is_xonly type"):
         musig2.SessionContext(bytes(66), [pk_1], [bytes(32)], [not_a_flag], _MSG)
 
 
@@ -1324,7 +1322,7 @@ def test_tweak_size() -> None:
     """Verify a tweak that is not 32 bytes is refused."""
     pk_1 = musig2.individual_pub_key(_SK_1)
     key_agg_ctx = musig2.key_agg([pk_1])
-    with pytest.raises(EllipticCurvesValueError, match="must be a 32-byte array"):
+    with pytest.raises(BTClibEccValueError, match="must be a 32-byte array"):
         musig2.apply_tweak(key_agg_ctx, bytes(31), False)
 
 
@@ -1334,7 +1332,7 @@ def test_a_nonce_per_key() -> None:
     pk_2 = musig2.individual_pub_key(_SK_2)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     del sec_nonce
-    with pytest.raises(EllipticCurvesValueError, match="must have the same length"):
+    with pytest.raises(BTClibEccValueError, match="must have the same length"):
         musig2.partial_sig_verify(bytes(32), [pub_nonce], [pk_1, pk_2], [], [], _MSG, 0)
 
 
@@ -1361,9 +1359,9 @@ def test_a_tweak_needs_a_flag_and_a_flag_needs_a_tweak() -> None:
     pub_keys = _TW_PUB_KEYS
     tweak = bytes(range(1, 33))
     err_msg = "must have the same length"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         musig2.key_agg_and_tweak(pub_keys, [tweak, tweak], [True])
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         musig2.key_agg_and_tweak(pub_keys, [tweak], [True, False])
     # and the pair that is a pair
     assert musig2.key_agg_and_tweak(pub_keys, [tweak], [True]).Q

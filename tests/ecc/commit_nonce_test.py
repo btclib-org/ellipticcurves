@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.commit_nonce` module.
+"""Tests for the `btclib_ecc.ecc.commit_nonce` module.
 
 The commitment is a parameter of `dsa.sign` and `ssa.sign`, so what is
 exercised here is those two: a signature carrying a commitment verifies as
@@ -23,35 +23,35 @@ from hashlib import sha1, sha256
 
 import pytest
 
-from ellipticcurves.alias import INF
-from ellipticcurves.curves import bytes_from_point, mult, point_from_pub_key, secp256k1
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.ecc import commit_nonce, dsa, ssa
-from ellipticcurves.ecc.bip340_nonce import bip340_nonce_
-from ellipticcurves.ecc.commit_nonce import (
+from btclib_ecc.alias import INF
+from btclib_ecc.curves import bytes_from_point, mult, point_from_pub_key, secp256k1
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.ecc import commit_nonce, dsa, ssa
+from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
+from btclib_ecc.ecc.commit_nonce import (
     _tweak,
     commit_entropy_,
     commit_nonce_,
     commit_point_,
 )
-from ellipticcurves.ecc.dsa import (
+from btclib_ecc.ecc.dsa import (
     _S2C_DATA_TAG,
     _S2C_POINT_TAG,
     _compact,
     _sig_from_compact,
 )
-from ellipticcurves.ecc.rfc6979_nonce import rfc6979_nonce_
-from ellipticcurves.ecc.ssa import _S2C_POINT_TAG as _SSA_POINT_TAG
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.ecc.rfc6979_nonce import rfc6979_nonce_
+from btclib_ecc.ecc.ssa import _S2C_POINT_TAG as _SSA_POINT_TAG
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
 )
-from ellipticcurves.hashes import reduce_to_hlen
+from btclib_ecc.hashes import reduce_to_hlen
 from tests import needs_zkp
 from tests.curves.curve_test import low_card_curves
 
-# guarded module scope, the same shape `ellipticcurves._libsecp256k1` uses: this
+# guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
 # file is collected in every job, including the no-bindings one where
 # `btclib_secp256k1` does not exist at all, and pytest imports every
 # module it collects before `tests.needs_zkp` can skip anything in it
@@ -384,13 +384,9 @@ def test_a_commitment_derives_its_own_nonce() -> None:
     ssa has no nonce parameter to clash with: its aux is entropy, and
     the commitment is mixed into it rather than displacing it.
     """
-    with pytest.raises(
-        EllipticCurvesValueError, match="commitment derives its own nonce"
-    ):
+    with pytest.raises(BTClibEccValueError, match="commitment derives its own nonce"):
         dsa.sign(_MSG, _PRV_KEY, 1234, commit=_COMMIT)
-    with pytest.raises(
-        EllipticCurvesValueError, match="commitment derives its own nonce"
-    ):
+    with pytest.raises(BTClibEccValueError, match="commitment derives its own nonce"):
         dsa.sign_(
             reduce_to_hlen(_MSG, sha256), _PRV_KEY, 1234, commit_hash=b"\x00" * 32
         )
@@ -403,16 +399,12 @@ def test_a_plain_signature_opens_no_commitment() -> None:
     receipt = mult(nonce, ec.G, ec)
     pub_key = mult(_PRV_KEY, ec.G, ec)
     sig = dsa.sign(_MSG, _PRV_KEY, nonce, grind=False)
-    with pytest.raises(
-        EllipticCurvesRuntimeError, match="commitment verification failed"
-    ):
+    with pytest.raises(BTClibEccRuntimeError, match="commitment verification failed"):
         dsa.assert_as_valid(_MSG, pub_key, sig, commit=_COMMIT, receipt=receipt)
 
     prv_key, x_Q = ssa.gen_keys(_PRV_KEY, ec)
     ssa_sig = ssa.sign(_MSG, prv_key)
-    with pytest.raises(
-        EllipticCurvesRuntimeError, match="commitment verification failed"
-    ):
+    with pytest.raises(BTClibEccRuntimeError, match="commitment verification failed"):
         ssa.assert_as_valid(_MSG, x_Q, ssa_sig, commit=_COMMIT, receipt=receipt)
 
 
@@ -424,16 +416,16 @@ def test_commitment_needs_the_receipt() -> None:
     """
     pub_key = mult(_PRV_KEY, secp256k1.G, secp256k1)
     sig, receipt = dsa.sign(_MSG, _PRV_KEY, grind=False, commit=_COMMIT)
-    with pytest.raises(EllipticCurvesTypeError, match="commitment without the receipt"):
+    with pytest.raises(BTClibEccTypeError, match="commitment without the receipt"):
         dsa.verify(_MSG, pub_key, sig, commit=_COMMIT)
-    with pytest.raises(EllipticCurvesTypeError, match="receipt without the commitment"):
+    with pytest.raises(BTClibEccTypeError, match="receipt without the commitment"):
         dsa.verify(_MSG, pub_key, sig, receipt=receipt)
 
     prv_key, x_Q = ssa.gen_keys(_PRV_KEY)
     ssa_sig, receipt = ssa.sign(_MSG, prv_key, commit=_COMMIT)
-    with pytest.raises(EllipticCurvesTypeError, match="commitment without the receipt"):
+    with pytest.raises(BTClibEccTypeError, match="commitment without the receipt"):
         ssa.verify(_MSG, x_Q, ssa_sig, commit=_COMMIT)
-    with pytest.raises(EllipticCurvesTypeError, match="receipt without the commitment"):
+    with pytest.raises(BTClibEccTypeError, match="receipt without the commitment"):
         ssa.verify(_MSG, x_Q, ssa_sig, receipt=receipt)
 
 
@@ -452,7 +444,7 @@ def test_zero_tweaked_nonce() -> None:
         for h in (i.to_bytes(4, "big") for i in range(1000))
         if _tweak(h, receipt, _S2C_POINT_TAG, ec, hf) == ec.n - nonce
     )
-    with pytest.raises(EllipticCurvesRuntimeError, match="zero tweaked nonce"):
+    with pytest.raises(BTClibEccRuntimeError, match="zero tweaked nonce"):
         commit_nonce_(commit_hash, nonce, _S2C_POINT_TAG, ec, hf)
 
 
@@ -469,7 +461,7 @@ def test_zero_tweaked_nonce_through_the_bindings(
     ec = secp256k1
     nonce = 1 + random.randrange(ec.n - 1)
     monkeypatch.setattr(commit_nonce, "_tweak", lambda *_: ec.n - nonce)
-    with pytest.raises(EllipticCurvesRuntimeError, match="zero tweaked nonce"):
+    with pytest.raises(BTClibEccRuntimeError, match="zero tweaked nonce"):
         commit_nonce_(b"", nonce, _S2C_POINT_TAG, ec, sha256)
 
 

@@ -10,8 +10,8 @@ requires = ["uv_build>=0.12.0,<0.13"]
 build-backend = "uv_build"
 
 [project]
-name = "ellipticcurves"
-# the one place the version is declared: ellipticcurves.__version__ reads
+name = "btclib-ecc"
+# the one place the version is declared: btclib_ecc.__version__ reads
 # it back from the installed metadata, and docs/source/conf.py reads it
 # from this file. A cycle in progress is the month alone; the release's
 # own pull request replaces it by hand with the date the release is cut,
@@ -73,8 +73,8 @@ classifiers = [
 ]
 
 [project.urls]
-homepage = "https://ellipticcurves.readthedocs.io/"
-documentation = "https://ellipticcurves.readthedocs.io/"
+homepage = "https://btclib-ecc.readthedocs.io/"
+documentation = "https://btclib-ecc.readthedocs.io/"
 download = "https://github.com/btclib-org/ellipticcurves/releases"
 changelog = "https://github.com/btclib-org/ellipticcurves/blob/main/RELEASE_NOTES.md"
 repository = "https://github.com/btclib-org/ellipticcurves"
@@ -165,7 +165,7 @@ required-version = ">=0.12.17"
 
 [tool.uv.build-backend]
 # `module-name` is not written: it defaults to `project.name` normalized,
-# which is `ellipticcurves` already.
+# which is `btclib_ecc` already.
 #
 # What the sdist carries beyond what the backend puts there by itself --
 # pyproject.toml, the module under `module-root`, and the files
@@ -207,7 +207,7 @@ source-exclude = [
     # the archive carries whole -- rather than by the name of the tool.
     # Anchored, so that the root's own dotted files stay in the archive
     "/docs/**/.*",
-    "/src/ellipticcurves/**/.*",
+    "/src/btclib_ecc/**/.*",
     "/tests/**/.*",
     # a leftover of the same kind whose name carries no leading dot
     "*.egg-info",
@@ -215,12 +215,12 @@ source-exclude = [
 ]
 
 [tool.check-wheel-contents]
-# the wheel's `ellipticcurves/` diffed against this checkout's
-# `src/ellipticcurves/`, file for file and in both directions (W101
+# the wheel's `btclib_ecc/` diffed against this checkout's
+# `src/btclib_ecc/`, file for file and in both directions (W101
 # missing, W102 extra): with no `package` given, check-wheel-contents
 # reads the wheel's own RECORD and asks nothing about the tree the wheel
 # was supposed to carry, so a dropped `py.typed` is reported clean
-package = ["src/ellipticcurves"]
+package = ["src/btclib_ecc"]
 
 [tool.check-sdist]
 # tracked files the sdist is meant not to carry, beyond what
@@ -318,7 +318,7 @@ extend-ignore-re = ['[0-9A-Za-z+/]{26,}={0,2}']
 # `secp256k1_borromean_verify_impl`'s own out-parameter, the challenges it
 # saves for a rewind (secp256k1-zkp,
 # src/modules/rangeproof/borromean_impl.h), which
-# src/ellipticcurves/ecc/rangeproof.py cites. The hook runs with
+# src/btclib_ecc/ecc/rangeproof.py cites. The hook runs with
 # --write-changes, so without this line it becomes `evaluates`, a word
 # naming nothing in zkp -- a citation a reader would go and fail to find
 evalues = "evalues"
@@ -338,7 +338,7 @@ extend-ignore-re = ['`[^`]*`']
 [tool.coverage.run]
 # what the ratchet measures, named here rather than on the command line:
 # unnamed, `--cov` measures every file the run imports
-source = ["ellipticcurves", "tests"]
+source = ["btclib_ecc", "tests"]
 # tests/integration is omitted because a test there skips itself without
 # the switch that asks for it: its body would be an uncovered line of
 # tests/ at every ordinary run, which is the ratchet reporting the switch
@@ -502,7 +502,7 @@ ignore = [
 # its submodules that way, as its docstring says, and tests/all_test.py
 # walks `__all__` with getattr and fails on the drift this rule would
 # catch
-"src/ellipticcurves/__init__.py" = ["F822"]
+"src/btclib_ecc/__init__.py" = ["F822"]
 # T20 is selected for the library, which writes to no stream of its own;
 # a script whose caller is a workflow step is the case it is not about.
 # What these two print -- a pin behind upstream or skipped, the module
@@ -570,5 +570,5 @@ allow-init-docstring = true
 # delegates to -- bytes_from_octets, assert_valid, the curve checks -- so
 # what a caller catches is not what this body raises. Kept on, every
 # docstring would document its own body instead of its contract; the
-# hierarchy a caller does catch is src/ellipticcurves/exceptions.py's
+# hierarchy a caller does catch is src/btclib_ecc/exceptions.py's
 skip-checking-raises = true

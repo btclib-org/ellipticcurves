@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.pedersen` module.
+"""Tests for the `btclib_ecc.ecc.pedersen` module.
 
 The `zkp`-marked tests at the end are issue btclib-org/btclib#1679's third
 oracle. H for (secp256k1, sha256) is the generator libsecp256k1-zkp calls
@@ -44,8 +44,8 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.alias import INF, Point
-from ellipticcurves.curves import (
+from btclib_ecc.alias import INF, Point
+from btclib_ecc.curves import (
     # the module, not only the names in it: `_libsecp256k1_available` is a
     # module attribute, and clearing it is the whole package's dispatch
     curve,
@@ -54,15 +54,15 @@ from ellipticcurves.curves import (
     point_from_octets,
     secp256k1,
 )
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.ecc import pedersen
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesValueError,
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.ecc import pedersen
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccValueError,
 )
 from tests import load, needs_bindings, needs_zkp, vector_id
 
-# guarded module scope, the same shape `ellipticcurves._libsecp256k1` uses: this
+# guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
 # file is collected in every job, including the no-bindings one where
 # `btclib_secp256k1` does not exist at all, and pytest imports every
 # module it collects before `tests.needs_zkp` can skip anything in it
@@ -205,9 +205,9 @@ def test_the_map_refuses_what_is_no_field_element() -> None:
     only way that call fails for a seed of the right size.
     """
     err_msg = "field element not in 0..p-1"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen._shallue_van_de_woestijne(secp256k1.p)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen._shallue_van_de_woestijne(-1)
 
 
@@ -324,14 +324,14 @@ def test_a_generator_from_a_seed_refuses_what_zkp_refuses() -> None:
     """
     seed = bytes.fromhex(_GENERATE_VECTORS[0]["seed"])
     with pytest.raises(
-        EllipticCurvesValueError, match="invalid size: 31 bytes instead of 32"
+        BTClibEccValueError, match="invalid size: 31 bytes instead of 32"
     ):
         pedersen.generator_from_seed(seed[:-1])
 
     err_msg = "blinding factor not in 0..n-1"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.generator_from_seed(seed, secp256k1.n)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.generator_from_seed(seed, -1)
 
 
@@ -383,7 +383,7 @@ def test_commitment() -> None:
     # return a falsy value: assert_as_valid is called as a statement, so
     # a return value would be silently discarded
     err_msg = "commitment verification failed"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         pedersen.assert_as_valid(r_1, v1, C2, H, ec)
     assert not pedersen.verify(r_1, v1, C2, H, ec)
 
@@ -407,11 +407,11 @@ def test_commit_unblinded() -> None:
     check, being the r = 0 mod n case of an unblinded commitment.
     """
     err_msg = r"invalid \(unblinded\) commitment"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commit(0, 5, _H)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commit(secp256k1.n, 5, _H)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commit(0, 0, _H)
 
     assert not pedersen.verify(0, 5, pedersen.commit(5, 5, _H), _H)
@@ -434,7 +434,7 @@ def test_commit_blinding_factor_sum() -> None:
     assert pedersen.verify(r_1 + r_2, 9, R, _H, ec)
 
     err_msg = r"invalid \(unblinded\) commitment"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commit(r_1 + 3, 9, _H, ec)  # r_1 + 3 == ec.n
 
 
@@ -555,7 +555,7 @@ def test_a_commitment_refuses_a_leading_octet_outside_its_pair(prefix: int) -> N
     to end.
     """
     octets = bytes([prefix]) + bytes.fromhex(_ZKP_COMMITMENT_VECTOR)[1:]
-    with pytest.raises(EllipticCurvesValueError, match="not a Pedersen commitment"):
+    with pytest.raises(BTClibEccValueError, match="not a Pedersen commitment"):
         pedersen.commitment_from_octets(octets)
 
 
@@ -567,7 +567,7 @@ def test_a_generator_refuses_a_leading_octet_outside_its_pair(prefix: int) -> No
     a commitment's and checks `secp256k1_generator_parse` returns zero.
     """
     octets = bytes([prefix]) + bytes.fromhex(_ZKP_GENERATOR_VECTOR)[1:]
-    with pytest.raises(EllipticCurvesValueError, match="not a generator"):
+    with pytest.raises(BTClibEccValueError, match="not a generator"):
         pedersen.generator_from_octets(octets)
 
 
@@ -578,10 +578,10 @@ def test_a_commitment_refuses_an_x_no_point_of_the_curve_has() -> None:
     point: 7 is not a square modulo p, so nothing squares to 0**3 + 7.
     """
     err_msg = r"x-coordinate not in 0\.\.p-1"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commitment_from_octets(b"\x08" + secp256k1.p.to_bytes(32, "big"))
 
-    with pytest.raises(EllipticCurvesValueError, match="invalid x-coordinate: 0"):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: 0"):
         pedersen.commitment_from_octets(b"\x08" + bytes(32))
 
 
@@ -589,7 +589,7 @@ def test_a_commitment_is_as_many_octets_as_it_is() -> None:
     """One tag and one x, and `bytes_from_octets` is what says so."""
     octets = bytes.fromhex(_ZKP_COMMITMENT_VECTOR)
     with pytest.raises(
-        EllipticCurvesValueError, match="invalid size: 32 bytes instead of 33"
+        BTClibEccValueError, match="invalid size: 32 bytes instead of 33"
     ):
         pedersen.commitment_from_octets(octets[:-1])
 
@@ -606,10 +606,10 @@ def test_writing_refuses_what_has_no_x_to_write(
     answers zero where the sum lands there, rather than serializing a
     point with no x.
     """
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve"):
+    with pytest.raises(BTClibEccValueError, match="point not on curve"):
         write((1, 2))
 
-    with pytest.raises(EllipticCurvesValueError, match="no bytes representation"):
+    with pytest.raises(BTClibEccValueError, match="no bytes representation"):
         write(INF)
 
 
@@ -688,7 +688,7 @@ def test_commit_outside_the_zkp_intersection() -> None:
     n = secp256k1.n
 
     err_msg = r"invalid \(unblinded\) commitment"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commit(0, 7, _H)
     assert zkp_generator.pedersen_commit(0, 7) == pedersen.bytes_from_commitment(
         mult(7, _H, secp256k1)
@@ -827,7 +827,7 @@ def test_a_blinding_factor_past_n_is_refused_on_both_sides() -> None:
     blind = secp256k1.n.to_bytes(32, "big")
     with pytest.raises(ValueError, match="invalid blind32"):
         zkp_generator.generate_blinded(seed, blind)
-    with pytest.raises(EllipticCurvesValueError, match="blinding factor not in 0..n-1"):
+    with pytest.raises(BTClibEccValueError, match="blinding factor not in 0..n-1"):
         pedersen.generator_from_seed(seed, blind)
 
     assert pedersen.bytes_from_generator(
@@ -849,9 +849,9 @@ def test_verify_tells_an_opening_that_is_no_number_from_one_that_fails() -> None
     assert pedersen.verify(r, v, commitment, _H)
 
     for call in (pedersen.verify, pedersen.assert_as_valid):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             call("not a number", v, commitment, _H)
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             call(r, "not a number", commitment, _H)
 
     # an opening that is well formed and simply does not open this

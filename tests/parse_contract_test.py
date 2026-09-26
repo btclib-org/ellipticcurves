@@ -5,7 +5,7 @@
 """Tests for the parse contract every `parse` in the package owes its caller.
 
 One file rather than a case per module, because the rule is one and
-`src/ellipticcurves/_utils.py` states it: a field is as long as its
+`src/btclib_ecc/_utils.py` states it: a field is as long as its
 encoding says, a complete octet string is one whole object, and a
 caller's stream is the caller's. What the tests hold every parser to is
 that none of the three depends on `check_validity`, which is an opinion
@@ -27,13 +27,13 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.ecc import ssa
-from ellipticcurves.ecc.borromean import BorromeanSig
-from ellipticcurves.ecc.rangeproof import RangeProof
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+from btclib_ecc.ecc import ssa
+from btclib_ecc.ecc.borromean import BorromeanSig
+from btclib_ecc.ecc.rangeproof import RangeProof
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
 )
 from tests import public_classes_with
 
@@ -41,9 +41,9 @@ from tests import public_classes_with
 # buffer has to be refused as one of these three, and never as an
 # IndexError or a struct error from underneath the package
 _CONTRACT_EXCEPTIONS = (
-    EllipticCurvesValueError,
-    EllipticCurvesRuntimeError,
-    EllipticCurvesTypeError,
+    BTClibEccValueError,
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
 )
 
 _RANGEPROOF = RangeProof(
@@ -96,9 +96,9 @@ def test_octets_are_one_whole_object(
     assert parse(serialization, check_validity=check_validity)
 
     for trailing in (b"\x00", b"junk"):
-        with pytest.raises(EllipticCurvesValueError, match="bytes after the"):
+        with pytest.raises(BTClibEccValueError, match="bytes after the"):
             parse(serialization + trailing, check_validity=check_validity)
-        with pytest.raises(EllipticCurvesValueError, match="bytes after the"):
+        with pytest.raises(BTClibEccValueError, match="bytes after the"):
             parse((serialization + trailing).hex(), check_validity=check_validity)
 
 
@@ -126,11 +126,11 @@ def test_a_truncated_field_names_itself() -> None:
     value read as a min value four bytes smaller, which is a valid one.
     """
     with pytest.raises(
-        EllipticCurvesValueError, match="not enough data for the rangeproof min value"
+        BTClibEccValueError, match="not enough data for the rangeproof min value"
     ):
         RangeProof.parse(_RANGEPROOF[:5])
     with pytest.raises(
-        EllipticCurvesValueError, match="not enough data for the borromean e0"
+        BTClibEccValueError, match="not enough data for the borromean e0"
     ):
         RangeProof.parse(_RANGEPROOF[:20])
 
@@ -144,7 +144,7 @@ def test_a_fixed_size_object_reports_its_own_length() -> None:
     sig_bytes = ssa.sign(b"parse contract", 1).serialize()
 
     err_msg = "invalid decoded length: 63 instead of 64"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.Sig.parse(sig_bytes[:63], check_validity=False)
 
 
@@ -152,7 +152,7 @@ def test_a_fixed_size_object_reports_its_own_length() -> None:
 # a decision, which is the difference between an exclusion and an
 # oversight -- the test below fails on either
 _EXCLUDED = {
-    "ellipticcurves.ecc.borromean.BorromeanSig": (
+    "btclib_ecc.ecc.borromean.BorromeanSig": (
         "the wire format has no length of its own for the ring structure:"
         " e0 || s... is only as long as the caller's rsizes says it is,"
         " the same reason zkp's secp256k1_borromean_verify takes rsizes as"
@@ -164,14 +164,14 @@ _EXCLUDED = {
         " test_borromean_sig_parse_refuses_short_and_trailing_data, driven"
         " with the rsizes an actual pubk_rings carries"
     ),
-    "ellipticcurves.ecc.dsa.Sig": (
+    "btclib_ecc.ecc.dsa.Sig": (
         "the one parser here with a flag in front of the rule, and the flag"
         " is Bitcoin Core's: trailing octets are refused under `strict`"
         " alone, where IsValidSignatureEncoding is called, and refused in a"
         " stream as well -- no caller in this package reads a signature out"
         " of the middle of one. Sig.parse says so where it does it"
     ),
-    "ellipticcurves.ecc.ecies.Envelope": (
+    "btclib_ecc.ecc.ecies.Envelope": (
         "BIE1 writes the ciphertext between fixed offsets with no length in"
         " front of it, so what would trail the envelope is ciphertext and a"
         " truncation of it is a shorter message: the size rule it can be"

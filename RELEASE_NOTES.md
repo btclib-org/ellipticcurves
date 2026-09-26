@@ -11,5 +11,5 @@ before upgrading, rather than a digit.
 
 ## v2026.10 (work in progress, not released yet)
 
-The first release of `ellipticcurves`: there is no earlier version of it
+The first release of `btclib-ecc`: there is no earlier version of it
 to upgrade from.

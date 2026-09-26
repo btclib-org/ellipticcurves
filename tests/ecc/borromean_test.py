@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.borromean` module."""
+"""Tests for the `btclib_ecc.ecc.borromean` module."""
 
 import hashlib
 import inspect
@@ -13,21 +13,21 @@ from io import BytesIO
 
 import pytest
 
-from ellipticcurves._utils import int_from_bits
-from ellipticcurves.alias import Point
-from ellipticcurves.curves import (
+from btclib_ecc._utils import int_from_bits
+from btclib_ecc.alias import Point
+from btclib_ecc.curves import (
     Curve,
     bytes_from_point,
     double_mult_var,
     mult,
     secp256k1,
 )
-from ellipticcurves.ecc import borromean, dsa
-from ellipticcurves.ecc.borromean import BorromeanSig, _get_msg_format, _hash
-from ellipticcurves.exceptions import (
+from btclib_ecc.ecc import borromean, dsa
+from btclib_ecc.ecc.borromean import BorromeanSig, _get_msg_format, _hash
+from btclib_ecc.exceptions import (
     BorromeanRingError,
-    EllipticCurvesTypeError,
-    EllipticCurvesValueError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
 )
 from tests import needs_zkp
 from tests.curves.curve_test import low_card_curves
@@ -79,7 +79,7 @@ def test_borromean() -> None:
     # a msg that is neither bytes nor a hex-str is a caller error, and
     # verify says so instead of answering False: catching Exception would
     # report an int msg as a failed ring signature
-    with pytest.raises(EllipticCurvesTypeError, match="invalid octets type: int"):
+    with pytest.raises(BTClibEccTypeError, match="invalid octets type: int"):
         borromean.verify(0, sig, pubk_rings)  # type: ignore[arg-type]
 
     # a forged signature must raise, not merely return a falsy value:
@@ -132,7 +132,7 @@ def test_borromean_sig_parse_refuses_short_and_trailing_data() -> None:
     """`parse` checks the length of every field, and what follows them.
 
     e0 and each s are read with `read_exactly`, which is what makes a
-    short buffer an `EllipticCurvesValueError` rather than a `BorromeanSig`
+    short buffer a `BTClibEccValueError` rather than a `BorromeanSig`
     whose last scalar is a few bytes narrower than the rest;
     `assert_no_trailing` is what refuses bytes appended after a
     complete signature -- the malleability two different byte strings
@@ -153,19 +153,15 @@ def test_borromean_sig_parse_refuses_short_and_trailing_data() -> None:
 
     # no prefix of the encoding is an object, at every offset
     for size in range(len(data)):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             BorromeanSig.parse(data[:size], ring_sizes)
 
     # the octets are one whole object: what follows them is refused,
     # hex-string included
     assert BorromeanSig.parse(data, ring_sizes) == sig
-    with pytest.raises(
-        EllipticCurvesValueError, match="bytes after the borromean ring"
-    ):
+    with pytest.raises(BTClibEccValueError, match="bytes after the borromean ring"):
         BorromeanSig.parse(data + b"\x00", ring_sizes)
-    with pytest.raises(
-        EllipticCurvesValueError, match="bytes after the borromean ring"
-    ):
+    with pytest.raises(BTClibEccValueError, match="bytes after the borromean ring"):
         BorromeanSig.parse((data + b"\x00").hex(), ring_sizes)
 
     # a stream may carry more, and is left on the byte after the object
@@ -175,11 +171,11 @@ def test_borromean_sig_parse_refuses_short_and_trailing_data() -> None:
 
     # the two specific fields a truncation lands in, named
     with pytest.raises(
-        EllipticCurvesValueError, match="not enough data for the borromean e0"
+        BTClibEccValueError, match="not enough data for the borromean e0"
     ):
         BorromeanSig.parse(data[:16], ring_sizes)
     with pytest.raises(
-        EllipticCurvesValueError, match=r"not enough data for the borromean s \(ring 0"
+        BTClibEccValueError, match=r"not enough data for the borromean s \(ring 0"
     ):
         BorromeanSig.parse(data[:40], ring_sizes)
 
@@ -194,15 +190,15 @@ def test_borromean_sig_assert_valid_holds_s_to_0_n() -> None:
     """
     ec = secp256k1
     Q1 = mult(1, ec.G, ec)
-    with pytest.raises(EllipticCurvesValueError, match="scalar s not in 0..n-1"):
+    with pytest.raises(BTClibEccValueError, match="scalar s not in 0..n-1"):
         BorromeanSig((0).to_bytes(32, "big"), [[ec.n]], ec)
 
     sig = BorromeanSig((0).to_bytes(32, "big"), [[ec.n]], ec, check_validity=False)
     with pytest.raises(
-        EllipticCurvesValueError, match=r"scalar s not in 0..n-1.*ring 0, position 0"
+        BTClibEccValueError, match=r"scalar s not in 0..n-1.*ring 0, position 0"
     ):
         sig.assert_valid()
-    with pytest.raises(EllipticCurvesValueError, match="scalar s not in 0..n-1"):
+    with pytest.raises(BTClibEccValueError, match="scalar s not in 0..n-1"):
         sig.serialize()
     # and the octets the flag still writes, which is the other way out of
     # `serialize`'s `if check_validity:` and the one no other test takes:
@@ -228,13 +224,13 @@ def test_borromean_sig_refuses_no_rings() -> None:
     here rather than handed an object that looks like a signature and
     is not one.
     """
-    with pytest.raises(EllipticCurvesValueError, match="no rings"):
+    with pytest.raises(BTClibEccValueError, match="no rings"):
         BorromeanSig((0).to_bytes(32, "big"), [])
 
     # the exact shape a caller who forgot rsizes on real octets would
     # trip: e0 alone, no trailing bytes for assert_no_trailing to catch
     # first -- assert_valid is what catches it instead
-    with pytest.raises(EllipticCurvesValueError, match="no rings"):
+    with pytest.raises(BTClibEccValueError, match="no rings"):
         BorromeanSig.parse((0).to_bytes(32, "big"))
 
 
@@ -274,7 +270,7 @@ def test_the_curve_and_the_hash_function_are_parameters() -> None:
     """As module globals, selecting either would be process-wide.
 
     Choosing another curve or hash would mean rebinding an attribute of
-    ellipticcurves.ecc.borromean, which changes the algorithm for every other
+    btclib_ecc.ecc.borromean, which changes the algorithm for every other
     caller in the process. They are arguments, with the same defaults
     and in the same position as in dsa, ssa and pedersen.
     """
@@ -375,7 +371,7 @@ def test_another_curve_signs_and_verifies(name: str) -> None:
     # signature over these rings at all, which is what issue
     # btclib-org/btclib#2170 tells from a signature that does not close
     assert borromean.verify(msg, sig, pubk_rings)
-    with pytest.raises(EllipticCurvesValueError):
+    with pytest.raises(BTClibEccValueError):
         borromean.verify(msg, sig.serialize(), pubk_rings)
 
 
@@ -418,7 +414,7 @@ def test_a_zero_e_is_a_one_in_n_event_on_a_low_cardinality_curve() -> None:
     assert (excinfo.value.ring, excinfo.value.position) == (0, 1)
 
     # verify answers False, as it does for any input that is not a valid
-    # signature: EllipticCurvesRuntimeError is one of the two it catches
+    # signature: BTClibEccRuntimeError is one of the two it catches
     assert not borromean.verify(b"\x00\x00\x00\x00", sig1, [[Q1]], ec=ec)
 
 
@@ -428,7 +424,7 @@ def test_the_point_at_infinity_is_the_other_corner_case() -> None:
     The one-in-n neighbour of a zero e: `r` is a hash input,
     `bytes_from_point` is what produces it, and there is no
     serialization of the point at infinity to hash -- `bytes_from_point`
-    itself raises a bare `EllipticCurvesValueError` for that, with no ring and
+    itself raises a bare `BTClibEccValueError` for that, with no ring and
     no position. `_bytes_from_ring_point` wraps it into a
     `BorromeanRingError` instead, the same as the "implausible signature
     failure" guards beside it, ring and position both in hand at every
@@ -443,7 +439,7 @@ def test_the_point_at_infinity_is_the_other_corner_case() -> None:
     with pytest.raises(BorromeanRingError, match="no bytes representation") as excinfo:
         borromean.assert_as_valid(b"\x00\x00\x00\x00", sig, [[Q1]], ec=ec)
     assert (excinfo.value.ring, excinfo.value.position) == (0, 0)
-    # BorromeanRingError being an EllipticCurvesRuntimeError, the other
+    # BorromeanRingError being a BTClibEccRuntimeError, the other
     # exception verify catches
     assert not borromean.verify(b"\x00\x00\x00\x00", sig, [[Q1]], ec=ec)
 
@@ -452,7 +448,7 @@ def test_one_nonce_and_one_signing_index_per_ring() -> None:
     """A short ks would truncate the loops and sign a subset of the rings.
 
     `zip(..., strict=True)` alone would catch it, with the message "zip()
-    argument 3 is shorter than argument 1" -- an `EllipticCurvesValueError`'s
+    argument 3 is shorter than argument 1" -- a `BTClibEccValueError`'s
     class carrying none of its content, naming an argument position of
     `zip` and no parameter of `sign`. The check is `sign`'s own, and
     `strict=True` is kept as the assertion that the two cannot drift
@@ -475,20 +471,20 @@ def test_one_nonce_and_one_signing_index_per_ring() -> None:
     )
 
     err_msg = "2 rings, 2 signing indexes, 1 nonces and 2 signing keys"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.sign(msg, [1], sign_key_idx, sign_keys, pubk_rings)
     err_msg = "2 rings, 1 signing indexes, 2 nonces and 2 signing keys"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.sign(msg, [1, 2], sign_key_idx[:1], sign_keys, pubk_rings)
     err_msg = "2 rings, 2 signing indexes, 2 nonces and 1 signing keys"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.sign(msg, [1, 2], sign_key_idx, sign_keys[:1], pubk_rings)
 
 
 def test_a_ring_shape_that_disagrees_with_pubk_rings_is_refused() -> None:
     """A caller-built BorromeanSig whose shape disagrees with pubk_rings.
 
-    `assert_as_valid` raises `EllipticCurvesValueError`, naming the ring and the
+    `assert_as_valid` raises `BTClibEccValueError`, naming the ring and the
     counts, for a `sig.s` whose shape does not match `pubk_rings`: the two cases
     issue btclib-org/btclib#1088 names separately, a ring with fewer scalars
     than keys and fewer rings than `pubk_rings` -- "the same defect one level
@@ -503,13 +499,13 @@ def test_a_ring_shape_that_disagrees_with_pubk_rings_is_refused() -> None:
     # one ring, two keys, one s-value: fewer scalars than keys
     sig = BorromeanSig((0).to_bytes(32, "big"), [[5]], ec)
     err_msg = "ring 0 has 1 s-value for 2 keys"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.assert_as_valid(b"msg", sig, [[q1, q2]])
     assert not borromean.verify(b"msg", sig, [[q1, q2]])
 
     # one ring in the signature, two in pubk_rings: fewer rings
     err_msg = "2 pubkey rings and 1 s-value ring"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.assert_as_valid(b"msg", sig, [[q1], [q2]])
     assert not borromean.verify(b"msg", sig, [[q1], [q2]])
 
@@ -521,10 +517,10 @@ def test_a_ring_with_no_keys_is_refused() -> None:
     `sig.s == [[]]` against `pubk_rings == [[]]` passes it -- both are one ring
     of zero. The walk still cannot run: `sign`'s step 1 divides by `keys_size`
     (`ZeroDivisionError`), and `assert_as_valid` indexes `e[i][0]` on the empty
-    list `_initialize` builds for it (`IndexError`), neither an
-    `EllipticCurvesValueError` nor an `EllipticCurvesRuntimeError`, so the
+    list `_initialize` builds for it (`IndexError`), neither a
+    `BTClibEccValueError` nor a `BTClibEccRuntimeError`, so the
     second escaped `verify`'s own `except (ValueError,
-    EllipticCurvesRuntimeError)` (issue btclib-org/btclib#1094).
+    BTClibEccRuntimeError)` (issue btclib-org/btclib#1094).
 
     `BorromeanSig.assert_valid` refuses it, so the refusal holds at
     construction already -- before `assert_as_valid` or `verify` are even
@@ -533,16 +529,16 @@ def test_a_ring_with_no_keys_is_refused() -> None:
     """
     ec = secp256k1
 
-    with pytest.raises(EllipticCurvesValueError, match="ring 0 has no keys"):
+    with pytest.raises(BTClibEccValueError, match="ring 0 has no keys"):
         BorromeanSig((0).to_bytes(32, "big"), [[]], ec)
 
     sig = BorromeanSig((0).to_bytes(32, "big"), [[]], ec, check_validity=False)
-    with pytest.raises(EllipticCurvesValueError, match="ring 0 has no keys"):
+    with pytest.raises(BTClibEccValueError, match="ring 0 has no keys"):
         borromean.assert_as_valid(b"msg", sig, [[]])
     assert not borromean.verify(b"msg", sig, [[]])
 
     err_msg = "ring 0 has 0 keys, sign_key_idx 0 is not a valid index"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.sign(b"msg", [1], [0], [1], [[]])
 
 
@@ -557,7 +553,7 @@ def test_sign_key_idx_out_of_range_is_refused() -> None:
     btclib-org/btclib#1095); a negative one wraps to a Python-legal index and
     signs a position other than the one it names, silently producing a
     signature that does not verify rather than raising anything at all. Both
-    are `EllipticCurvesValueError`, naming the ring, its size and the index,
+    are `BTClibEccValueError`, naming the ring, its size and the index,
     before either step runs.
     """
     ec = secp256k1
@@ -565,11 +561,11 @@ def test_sign_key_idx_out_of_range_is_refused() -> None:
     q2 = mult(2, ec.G, ec)
 
     err_msg = "ring 0 has 2 keys, sign_key_idx 5 is not a valid index"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.sign(b"msg", [1], [5], [1], [[q1, q2]])
 
     err_msg = "ring 0 has 2 keys, sign_key_idx -1 is not a valid index"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         borromean.sign(b"msg", [1], [-1], [1], [[q1, q2]])
 
 
@@ -597,9 +593,9 @@ def test_a_scalar_outside_1_to_n_minus_1_is_refused() -> None:
     err_msg = "private key not in 1..n-1"
 
     for bad in (0, ec.n, q + ec.n):
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             borromean.sign(b"msg", [1], [1], [bad], pubk_rings)
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             borromean.sign(b"msg", [bad], [1], [q], pubk_rings)
 
     # the key itself still signs, and the ring still verifies: what the
@@ -618,8 +614,8 @@ def test_a_key_and_a_nonce_are_spelled_the_way_ecc_spells_a_scalar() -> None:
     key repeats a str or a bytes instead of multiplying, the challenge being far
     too large a repeat count to fit the index-sized integer CPython wants, and a
     `TypeError` where the nonce adds an int to one -- a different sentence per
-    spelling. None of the three is an `EllipticCurvesValueError` or an
-    `EllipticCurvesTypeError`, so all escaped the contract (issue
+    spelling. None of the three is a `BTClibEccValueError` or a
+    `BTClibEccTypeError`, so all escaped the contract (issue
     btclib-org/btclib#1243).
     """
     ec = secp256k1
@@ -764,13 +760,13 @@ def test_sign_reads_a_prepared_hash_and_a_ring_key() -> None:
     prv_key, pub_key = dsa.gen_keys(2)
     m = sha256(b"a prepared message hash").digest()
 
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve"):
+    with pytest.raises(BTClibEccValueError, match="point not on curve"):
         borromean.sign_(m, [1], [0], [prv_key], [[(1, 2)]])
 
     # and the hash itself, which is hf's digest and not octets of any size
-    with pytest.raises(EllipticCurvesValueError, match="invalid size"):
+    with pytest.raises(BTClibEccValueError, match="invalid size"):
         borromean.sign_(m + b"\x00", [1], [0], [prv_key], [[pub_key]])
-    with pytest.raises(EllipticCurvesTypeError, match="invalid octets type: int"):
+    with pytest.raises(BTClibEccTypeError, match="invalid octets type: int"):
         borromean.sign_(0, [1], [0], [prv_key], [[pub_key]])  # type: ignore[arg-type]
 
 
@@ -921,7 +917,7 @@ def test_verify_tells_octets_that_are_no_signature_from_one_that_fails() -> None
     # a buffer the rings have no reading for, at either end of the length
     for damaged in (octets[:-1], octets + b"\x00", b""):
         for call in (borromean.verify, borromean.assert_as_valid):
-            with pytest.raises(EllipticCurvesValueError):
+            with pytest.raises(BTClibEccValueError):
                 call(msg, damaged, pubk_rings)
 
     # an s at or above the group order, which the octets do carry: a

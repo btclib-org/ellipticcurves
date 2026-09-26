@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.rangeproof` module.
+"""Tests for the `btclib_ecc.ecc.rangeproof` module.
 
 The vectors are proofs libsecp256k1-zkp signed, recorded with the
 arguments that produced them and with what `zkp.rangeproof.info`
@@ -92,11 +92,11 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.alias import INF
-from ellipticcurves.curves import mult, secp256k1
-from ellipticcurves.ecc import rangeproof
-from ellipticcurves.ecc.borromean import BorromeanSig
-from ellipticcurves.ecc.pedersen import (
+from btclib_ecc.alias import INF
+from btclib_ecc.curves import mult, secp256k1
+from btclib_ecc.ecc import rangeproof
+from btclib_ecc.ecc.borromean import BorromeanSig
+from btclib_ecc.ecc.pedersen import (
     _RANGEPROOF_TAG,
     _bytes_from_point,
     _point_from_x,
@@ -106,10 +106,10 @@ from ellipticcurves.ecc.pedersen import (
     generator_from_seed,
     second_generator,
 )
-from ellipticcurves.ecc.rangeproof import RangeProof, sign, sign_public_value
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesValueError,
+from btclib_ecc.ecc.rangeproof import RangeProof, sign, sign_public_value
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccValueError,
 )
 from tests import load, needs_zkp, replace_unchecked, vector_id
 
@@ -243,9 +243,7 @@ def test_the_sign_bit_is_residuosity_and_not_parity() -> None:
 def test_parse_refuses_a_reserved_bit() -> None:
     """Bit 7 of the flags is held at zero, and is not a field to carry."""
     octets = _octets("one ring")
-    with pytest.raises(
-        EllipticCurvesValueError, match="bit 7 set in the rangeproof flags"
-    ):
+    with pytest.raises(BTClibEccValueError, match="bit 7 set in the rangeproof flags"):
         RangeProof.parse(bytes([octets[0] | 128]) + octets[1:])
 
 
@@ -261,7 +259,7 @@ def test_parse_refuses_a_mantissa_past_the_cap() -> None:
     octets = _octets("one ring")
     err_msg = "rangeproof mantissa not in 1..64: 65"
     for check_validity in (True, False):
-        with pytest.raises(EllipticCurvesValueError, match=err_msg):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
             RangeProof.parse(
                 octets[:1] + b"\x40" + octets[2:], check_validity=check_validity
             )
@@ -276,7 +274,7 @@ def test_parse_refuses_an_exponent_past_the_cap() -> None:
     """
     octets = _octets("one ring")
     mutated = bytes([octets[0] | 19]) + octets[1:]
-    with pytest.raises(EllipticCurvesValueError, match="exponent not in 0..18: 19"):
+    with pytest.raises(BTClibEccValueError, match="exponent not in 0..18: 19"):
         RangeProof.parse(mutated)
     assert (
         RangeProof.parse(mutated, check_validity=False).serialize(check_validity=False)
@@ -294,9 +292,7 @@ def test_parse_refuses_a_range_that_overflows_its_own_width() -> None:
     """
     octets = _octets("odd mantissa")
     mutated = bytes([octets[0] | 18]) + octets[1:]
-    with pytest.raises(
-        EllipticCurvesValueError, match="max value overflows at exponent 18"
-    ):
+    with pytest.raises(BTClibEccValueError, match="max value overflows at exponent 18"):
         RangeProof.parse(mutated)
 
 
@@ -329,14 +325,14 @@ def test_parse_refuses_a_set_bit_above_the_last_sign_bit() -> None:
     signs_at = _header_size(octets)
     mutated = bytearray(octets)
     mutated[signs_at + 1] |= 2
-    with pytest.raises(EllipticCurvesValueError, match="sign bit padding is not zero"):
+    with pytest.raises(BTClibEccValueError, match="sign bit padding is not zero"):
         RangeProof.parse(bytes(mutated))
 
 
 def test_parse_refuses_trailing_octets() -> None:
     """A proof is one whole octet string, `_utils.assert_no_trailing`'s rule."""
     octets = _octets("one ring")
-    with pytest.raises(EllipticCurvesValueError, match="1 bytes after the rangeproof"):
+    with pytest.raises(BTClibEccValueError, match="1 bytes after the rangeproof"):
         RangeProof.parse(octets + b"\x00")
 
 
@@ -369,9 +365,7 @@ def test_parse_refuses_a_truncated_proof(id_: str, size: int, err_msg: str) -> N
     and the one `s` even the smallest ring structure needs, so reading
     field by field refuses the same buffers and says which field.
     """
-    with pytest.raises(
-        EllipticCurvesValueError, match=f"not enough data for the {err_msg}"
-    ):
+    with pytest.raises(BTClibEccValueError, match=f"not enough data for the {err_msg}"):
         RangeProof.parse(_octets(id_)[:size])
 
 
@@ -380,23 +374,23 @@ def test_assert_valid_refuses_a_body_the_mantissa_does_not_describe() -> None:
     proof = RangeProof.parse(_octets("odd mantissa"))
 
     err_msg = "rangeproof has 7 sign bits for 8 ring commitments"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(proof, signs=proof.signs[:-1]).assert_valid()
 
     err_msg = "rangeproof has 7 ring commitments where the mantissa asks for 8"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(
             proof, ring_commitments=proof.ring_commitments[:-1]
         ).assert_valid()
 
     err_msg = "ring commitment 0 does not fit in 32 octets"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(
             proof, ring_commitments=(2**256, *proof.ring_commitments[1:])
         ).assert_valid()
 
     smaller = BorromeanSig(proof.sig.e0, [list(ring) for ring in proof.sig.s[:-1]])
-    with pytest.raises(EllipticCurvesValueError, match="are not the mantissa's"):
+    with pytest.raises(BTClibEccValueError, match="are not the mantissa's"):
         replace_unchecked(proof, sig=smaller).assert_valid()
 
 
@@ -405,22 +399,22 @@ def test_assert_valid_refuses_a_header_no_proof_carries() -> None:
     proof = RangeProof.parse(_octets("odd mantissa"))
 
     err_msg = "rangeproof exponent not in 0..18: -1"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(proof, exp=-1).assert_valid()
 
     public = RangeProof.parse(_octets("public value"))
     err_msg = "rangeproof exponent of a public value is not -1: 3"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(public, exp=3).assert_valid()
 
     # the cap `parse` refuses where it reads the octet, which leaves
     # this the state of an object built rather than parsed
     err_msg = "rangeproof mantissa not in 1..64: 65"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(proof, mantissa=65).assert_valid()
 
     err_msg = "rangeproof min value not in 0..2\\*\\*64-1: 18446744073709551616"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(public, min_value=2**64).assert_valid()
 
 
@@ -433,7 +427,7 @@ def test_assert_valid_refuses_a_range_that_overflows_its_min_value() -> None:
     """
     sig = BorromeanSig(bytes(32), [[0] * 4] * 32)
     err_msg = "max value overflows past min value 1"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         RangeProof(0, 64, 1, (False,) * 31, (0,) * 31, sig)
 
 
@@ -547,18 +541,16 @@ def test_sign_key_idx_refuses_a_value_this_proof_has_no_digit_for() -> None:
     """Outside the range the header states, or between two of its steps."""
     proof = RangeProof.parse(_octets("padded sign bits"))
     err_msg = f"rangeproof value not in 1000..{proof.max_value}: "
-    with pytest.raises(EllipticCurvesValueError, match=f"{err_msg}999"):
+    with pytest.raises(BTClibEccValueError, match=f"{err_msg}999"):
         proof.sign_key_idx(999)
-    with pytest.raises(
-        EllipticCurvesValueError, match=f"{err_msg}{proof.max_value + 1}"
-    ):
+    with pytest.raises(BTClibEccValueError, match=f"{err_msg}{proof.max_value + 1}"):
         proof.sign_key_idx(proof.max_value + 1)
 
     # an exponent of 2, so the proof steps by a hundred and says nothing
     # about what lies between two steps
     scaled = RangeProof.parse(_octets("scaled exponent"))
     err_msg = "rangeproof value 100001 is not the exponent's own multiple"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         scaled.sign_key_idx(100001)
 
 
@@ -584,19 +576,19 @@ def test_a_mantissa_the_header_cannot_state_refuses_where_it_is_read(
     )
     commitment = commit(vector["blind"], vector["value"], _GEN)
     err_msg = f"rangeproof mantissa not in 1..64: {mantissa}"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         _ = proof.max_value
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         _ = proof.rsizes
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.sign_key_idx(vector["value"])
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.nonce_chain(
             commitment, vector["value"], vector["nonce"], _GEN, check_validity=False
         )
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.serialize(check_validity=False)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.pubk_rings(commitment, _GEN, check_validity=False)
 
 
@@ -612,13 +604,13 @@ def test_pubk_rings_refuses_what_names_no_public_key() -> None:
     vector = _vector("odd mantissa")
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
     commitment = commit(vector["blind"], vector["value"], _GEN)
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve"):
+    with pytest.raises(BTClibEccValueError, match="point not on curve"):
         proof.pubk_rings((1, 2), _GEN)
 
     # 7 is no x-coordinate of this curve, and it is a ring commitment
     # `assert_valid` takes: what a proof states there is an integer of
     # the field's width and this is where it has to name a point
-    with pytest.raises(EllipticCurvesValueError, match="invalid x-coordinate: 7"):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: 7"):
         replace_unchecked(
             proof, ring_commitments=(7, *proof.ring_commitments[1:])
         ).pubk_rings(commitment, _GEN)
@@ -628,7 +620,7 @@ def test_pubk_rings_refuses_what_names_no_public_key() -> None:
     # the entry whose value is not zero, so the field is there to read
     assert min_value is not None
     err_msg = "last ring commitment is the point at infinity"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         public.pubk_rings(mult(min_value, second_generator(), secp256k1), _GEN)
 
 
@@ -755,7 +747,7 @@ def test_nonce_chain_refuses_a_commitment_that_is_no_point() -> None:
     """
     vector = _vector("odd mantissa")
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
-    with pytest.raises(EllipticCurvesValueError, match="point not on curve"):
+    with pytest.raises(BTClibEccValueError, match="point not on curve"):
         proof.nonce_chain((1, 2), vector["value"], vector["nonce"], _GEN)
 
 
@@ -772,7 +764,7 @@ def test_nonce_chain_refuses_a_commitment_at_infinity() -> None:
     vector = _vector("odd mantissa")
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
     assert secp256k1.is_on_curve(INF)
-    with pytest.raises(EllipticCurvesValueError, match="no bytes representation"):
+    with pytest.raises(BTClibEccValueError, match="no bytes representation"):
         proof.nonce_chain(INF, vector["value"], vector["nonce"], _GEN)
 
 
@@ -984,19 +976,17 @@ def test_a_public_value_of_zero_carries_no_min_value_field() -> None:
 
 def test_sign_public_value_refuses_what_it_has_no_octets_for() -> None:
     """Each argument against what the format and the curve allow."""
-    with pytest.raises(EllipticCurvesValueError, match="private key not in 1..n-1"):
+    with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         sign_public_value(0, 1, _NONCE, _GEN)
 
     err_msg = "rangeproof value not in 0..2\\*\\*64-1: "
-    with pytest.raises(EllipticCurvesValueError, match=f"{err_msg}-1"):
+    with pytest.raises(BTClibEccValueError, match=f"{err_msg}-1"):
         sign_public_value(_BLIND, -1, _NONCE, _GEN)
-    with pytest.raises(
-        EllipticCurvesValueError, match=f"{err_msg}18446744073709551616"
-    ):
+    with pytest.raises(BTClibEccValueError, match=f"{err_msg}18446744073709551616"):
         sign_public_value(_BLIND, 2**64, _NONCE, _GEN)
 
     with pytest.raises(
-        EllipticCurvesValueError, match="invalid size: 31 bytes instead of 32"
+        BTClibEccValueError, match="invalid size: 31 bytes instead of 32"
     ):
         sign_public_value(_BLIND, 1, _NONCE[:-2], _GEN)
 
@@ -1018,7 +1008,7 @@ def test_a_draw_that_is_no_scalar_is_refused_and_not_redrawn(
     write.
     """
     monkeypatch.setattr(rangeproof, "_HmacDrbg", lambda *_: _FixedDraws(draw))
-    with pytest.raises(EllipticCurvesRuntimeError, match="nonce is not a scalar"):
+    with pytest.raises(BTClibEccRuntimeError, match="nonce is not a scalar"):
         sign_public_value(_BLIND, 1, _NONCE, _GEN)
 
 
@@ -1038,7 +1028,7 @@ def test_a_challenge_that_is_no_scalar_is_refused(
     here would write a proof `secp256k1_borromean_verify_impl` refuses.
     """
     monkeypatch.setattr(rangeproof, "_hash", lambda *_: challenge)
-    with pytest.raises(EllipticCurvesRuntimeError, match="challenge is not a scalar"):
+    with pytest.raises(BTClibEccRuntimeError, match="challenge is not a scalar"):
         sign_public_value(_BLIND, 1, _NONCE, _GEN)
 
 
@@ -1055,7 +1045,7 @@ def test_a_zero_signature_value_is_refused(monkeypatch: pytest.MonkeyPatch) -> N
         rangeproof, "_HmacDrbg", lambda *_: _FixedDraws(k.to_bytes(32, "big"))
     )
     monkeypatch.setattr(rangeproof, "_hash", lambda *_: e.to_bytes(32, "big"))
-    with pytest.raises(EllipticCurvesRuntimeError, match="signature value is zero"):
+    with pytest.raises(BTClibEccRuntimeError, match="signature value is zero"):
         sign_public_value(_BLIND, 1, _NONCE, _GEN)
 
 
@@ -1159,28 +1149,26 @@ def test_sign_refuses_what_it_has_no_octets_for() -> None:
     at all, and so is `min_value` above the value: a floor over the
     thing it is a floor of proves nothing.
     """
-    with pytest.raises(EllipticCurvesValueError, match="private key not in 1..n-1"):
+    with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         sign(0, 1, _NONCE, _GEN)
 
     err_msg = "rangeproof value not in 0..2\\*\\*64-1: "
-    with pytest.raises(EllipticCurvesValueError, match=f"{err_msg}-1"):
+    with pytest.raises(BTClibEccValueError, match=f"{err_msg}-1"):
         sign(_BLIND, -1, _NONCE, _GEN)
-    with pytest.raises(
-        EllipticCurvesValueError, match=f"{err_msg}18446744073709551616"
-    ):
+    with pytest.raises(BTClibEccValueError, match=f"{err_msg}18446744073709551616"):
         sign(_BLIND, 2**64, _NONCE, _GEN)
 
-    with pytest.raises(EllipticCurvesValueError, match="min value not in 0..7: 8"):
+    with pytest.raises(BTClibEccValueError, match="min value not in 0..7: 8"):
         sign(_BLIND, 7, _NONCE, _GEN, min_value=8)
-    with pytest.raises(EllipticCurvesValueError, match="exponent not in -1..18: 19"):
+    with pytest.raises(BTClibEccValueError, match="exponent not in -1..18: 19"):
         sign(_BLIND, 7, _NONCE, _GEN, exp=19)
-    with pytest.raises(EllipticCurvesValueError, match="exponent not in -1..18: -2"):
+    with pytest.raises(BTClibEccValueError, match="exponent not in -1..18: -2"):
         sign(_BLIND, 7, _NONCE, _GEN, exp=-2)
-    with pytest.raises(EllipticCurvesValueError, match="min bits not in 0..64: 65"):
+    with pytest.raises(BTClibEccValueError, match="min bits not in 0..64: 65"):
         sign(_BLIND, 7, _NONCE, _GEN, min_bits=65)
 
     with pytest.raises(
-        EllipticCurvesValueError, match="invalid size: 31 bytes instead of 32"
+        BTClibEccValueError, match="invalid size: 31 bytes instead of 32"
     ):
         sign(_BLIND, 1, _NONCE[:-2], _GEN)
 
@@ -1203,7 +1191,7 @@ def test_a_range_leaving_its_other_end_no_room_is_refused(
     control below is a value exactly at that ceiling, which is proven,
     where the same value a step higher is not.
     """
-    with pytest.raises(EllipticCurvesValueError, match="does not fit 2\\*\\*64"):
+    with pytest.raises(BTClibEccValueError, match="does not fit 2\\*\\*64"):
         sign(_BLIND, value, _NONCE, _GEN, min_value=min_value)
 
     proof = sign(_BLIND, 2**63 - 1, _NONCE, _GEN, min_value=1)
@@ -1226,7 +1214,7 @@ def test_a_last_ring_blinding_factor_of_zero_is_refused(
     chain = rangeproof.NonceChain((-int(_BLIND, 16) % secp256k1.n,), ((1, 2, 3, 4),))
     monkeypatch.setattr(rangeproof, "_genrand", lambda *_: chain)
     with pytest.raises(
-        EllipticCurvesRuntimeError, match="last ring blinding factor is zero"
+        BTClibEccRuntimeError, match="last ring blinding factor is zero"
     ):
         sign(_BLIND, 3, _NONCE, _GEN, min_bits=2)
 
@@ -1256,7 +1244,7 @@ def test_a_ring_commitment_at_infinity_is_refused(
     # the single ring of a mantissa of two, whose digit is the value
     blind = (-3 * log_of_generator - chain_factor) % secp256k1.n
     err_msg = "ring commitment is the point at infinity"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         sign(blind, 3, _NONCE, gen, min_bits=2)
 
 
@@ -1285,9 +1273,7 @@ def test_a_recorded_proof_holds_for_its_own_commitment(vector: dict[str, Any]) -
 
     other = commit(vector["blind"], vector["value"] + 1, _GEN)
     assert not rangeproof.verify(other, octets, _GEN)
-    with pytest.raises(
-        EllipticCurvesRuntimeError, match="signature verification failed"
-    ):
+    with pytest.raises(BTClibEccRuntimeError, match="signature verification failed"):
         rangeproof.assert_as_valid(other, octets, _GEN)
 
 
@@ -1330,11 +1316,11 @@ def test_verify_tells_octets_that_are_no_proof_from_one_that_fails() -> None:
     # whose reserved bit 7 the format holds at zero
     for damaged in (octets[:-1], octets + b"\x00", bytes([octets[0] | 0x80])):
         for call in (rangeproof.verify, rangeproof.assert_as_valid):
-            with pytest.raises(EllipticCurvesValueError):
+            with pytest.raises(BTClibEccValueError):
                 call(commitment, damaged, _GEN)
 
     # and a spelling that is no octets at all
-    with pytest.raises(EllipticCurvesValueError):
+    with pytest.raises(BTClibEccValueError):
         rangeproof.verify(commitment, "not hex at all", _GEN)
 
     # well formed, and merely not this commitment's proof: an answer
@@ -1378,9 +1364,9 @@ def test_a_built_proof_is_asked_what_a_parse_asks_the_octets() -> None:
         ),
     ):
         assert not rangeproof.verify(commitment, built, _GEN)
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             rangeproof.assert_as_valid(commitment, built, _GEN)
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             rangeproof.rewind(commitment, built, vector["nonce"], _GEN)
 
 
@@ -1410,7 +1396,7 @@ def test_verify_refuses_a_signature_value_of_zero() -> None:
     zeroed[0][0] = 0
     mutated = replace_unchecked(proof, sig=replace_unchecked(proof.sig, s=zeroed))
     commitment = commit(vector["blind"], vector["value"], _GEN)
-    with pytest.raises(EllipticCurvesRuntimeError, match="signature value is zero"):
+    with pytest.raises(BTClibEccRuntimeError, match="signature value is zero"):
         rangeproof.assert_as_valid(commitment, mutated, _GEN)
     assert not rangeproof.verify(commitment, mutated, _GEN)
 
@@ -1446,7 +1432,7 @@ def test_verify_refuses_a_ring_key_at_infinity() -> None:
     rings = holed.pubk_rings(commitment, _GEN)
     assert rings[0][1] == INF
     with pytest.raises(
-        EllipticCurvesRuntimeError, match="ring key is the point at infinity"
+        BTClibEccRuntimeError, match="ring key is the point at infinity"
     ):
         rangeproof.assert_as_valid(commitment, holed, _GEN)
     assert not rangeproof.verify(commitment, holed, _GEN)
@@ -1465,7 +1451,7 @@ def test_rewind_refuses_a_nonce_that_is_not_the_proof_s() -> None:
     commitment = commit(vector["blind"], vector["value"], _GEN)
     octets = _octets("odd mantissa")
     assert rangeproof.verify(commitment, octets, _GEN)
-    with pytest.raises(EllipticCurvesRuntimeError, match="reads no value encoding"):
+    with pytest.raises(BTClibEccRuntimeError, match="reads no value encoding"):
         rangeproof.rewind(commitment, octets, bytes(32), _GEN)
 
 
@@ -1500,9 +1486,7 @@ def test_rewind_refuses_a_value_encoding_at_the_last_ring_s_digit(
     proof = sign(_BLIND, 3, _NONCE, _GEN, min_bits=4)
     commitment = commit(_BLIND, 3, _GEN)
     assert rangeproof.verify(commitment, proof, _GEN)
-    with pytest.raises(
-        EllipticCurvesRuntimeError, match="reads the value at the digit"
-    ):
+    with pytest.raises(BTClibEccRuntimeError, match="reads the value at the digit"):
         rangeproof.rewind(commitment, proof, _NONCE, _GEN)
 
 
@@ -1522,7 +1506,7 @@ def test_rewind_refuses_a_digit_the_last_ring_has_no_key_for(
     commitment = commit(_BLIND, 3, _GEN)
     assert proof.rsizes == (4, 2)
     assert rangeproof.verify(commitment, proof, _GEN)
-    with pytest.raises(EllipticCurvesRuntimeError, match="has no key for"):
+    with pytest.raises(BTClibEccRuntimeError, match="has no key for"):
         rangeproof.rewind(commitment, proof, _NONCE, _GEN)
 
 
@@ -1541,9 +1525,7 @@ def test_rewind_refuses_what_does_not_open_the_commitment(
     proof = sign(_BLIND, 3, _NONCE, _GEN, min_bits=4)
     commitment = commit(_BLIND, 3, _GEN)
     assert rangeproof.verify(commitment, proof, _GEN)
-    with pytest.raises(
-        EllipticCurvesRuntimeError, match="does not open the commitment"
-    ):
+    with pytest.raises(BTClibEccRuntimeError, match="does not open the commitment"):
         rangeproof.rewind(commitment, proof, _NONCE, _GEN)
 
 
@@ -1639,13 +1621,13 @@ def test_a_message_longer_than_the_rings_hold_is_refused() -> None:
     small `min_bits` and the public-value proof both give.
     """
     err_msg = "message is longer than the"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         sign(_BLIND, 1, _NONCE, _GEN, min_bits=1, message=b"x")
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         sign(_BLIND, 3, _NONCE, _GEN, min_bits=4, message=bytes(129))
     # the same bound reached through the chain rather than through `sign`
     proof = sign(_BLIND, 3, _NONCE, _GEN, min_bits=4)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.nonce_chain(commit(_BLIND, 3, _GEN), 3, _NONCE, _GEN, bytes(129))
     # and what it does hold
     filled = sign(_BLIND, 3, _NONCE, _GEN, min_bits=4, message=bytes(128))
@@ -1704,9 +1686,9 @@ def test_extra_commit_binds_a_proof_to_octets_it_does_not_carry(
     err_msg = "rangeproof signature verification failed"
     for wrong in (b"", extra_commit + b"!", extra_commit[:-1]):
         assert not rangeproof.verify(commitment, bound, _GEN, extra_commit=wrong)
-        with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+        with pytest.raises(BTClibEccRuntimeError, match=err_msg):
             rangeproof.assert_as_valid(commitment, bound, _GEN, extra_commit=wrong)
-        with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+        with pytest.raises(BTClibEccRuntimeError, match=err_msg):
             rangeproof.rewind(commitment, bound, _NONCE, _GEN, extra_commit=wrong)
     # and the proof written under none is refused under these
     assert not rangeproof.verify(commitment, plain, _GEN, extra_commit=extra_commit)
@@ -2073,7 +2055,7 @@ def test_zkp_reads_what_this_module_writes(value: int) -> None:
             )
         except ValueError:
             refused += 1
-            with pytest.raises((EllipticCurvesValueError, EllipticCurvesRuntimeError)):
+            with pytest.raises((BTClibEccValueError, BTClibEccRuntimeError)):
                 sign(
                     _BLIND,
                     value,
@@ -2209,7 +2191,7 @@ def test_a_nonempty_extra_commit_crosses_in_both_directions(
     with pytest.raises(ValueError, match="rewind failed"):
         zkp_rangeproof.rewind(commitment, octets, nonce, other)
     assert not rangeproof.verify(point, octets, _GEN, extra_commit=other)
-    with pytest.raises(EllipticCurvesRuntimeError, match="verification failed"):
+    with pytest.raises(BTClibEccRuntimeError, match="verification failed"):
         rangeproof.rewind(point, octets, nonce, _GEN, extra_commit=other)
 
 
@@ -2278,5 +2260,5 @@ def test_a_proof_under_a_derived_generator_crosses_to_zkp() -> None:
     with pytest.raises(ValueError, match="rewind failed"):
         zkp_rangeproof.rewind(commitment, octets, nonce)
     assert not rangeproof.verify(point, octets, _GEN)
-    with pytest.raises(EllipticCurvesRuntimeError, match="verification failed"):
+    with pytest.raises(BTClibEccRuntimeError, match="verification failed"):
         rangeproof.rewind(point, octets, nonce, _GEN)

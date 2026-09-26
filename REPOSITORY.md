@@ -60,7 +60,7 @@ gh api -X PATCH repos/btclib-org/ellipticcurves \
   -F delete_branch_on_merge=true \
   -f squash_merge_commit_title=COMMIT_OR_PR_TITLE \
   -f squash_merge_commit_message=COMMIT_MESSAGES \
-  -f homepage=https://ellipticcurves.readthedocs.io/
+  -f homepage=https://btclib-ecc.readthedocs.io/
 ```
 
 Read back:
@@ -369,18 +369,18 @@ gh api "$env/deployment-branch-policies" \
 ```
 
 The two pending publishers `RELEASING.md`'s *One-time setup* names, on
-PyPI and on TestPyPI, were not yet added on 2026-09-26, adding them
-being an account action and the maintainer's. That rests on the
-maintainer's statement rather than on a call: none here reads a pending
-publisher back, and each index answers `404` for the project until its
-first upload, publisher or not.
+PyPI and on TestPyPI, were in place on 2026-09-26 under the project name
+`btclib-ecc`, adding them being an account action and the maintainer's.
+That rests on the maintainer's statement rather than on a call: none
+here reads a pending publisher back, and each index answers `404` for
+the project until its first upload, publisher or not.
 
 ```shell
 curl -s -o /dev/null -w '%{http_code}\n' \
-  https://pypi.org/pypi/ellipticcurves/json
+  https://pypi.org/pypi/btclib-ecc/json
 # 404
 curl -s -o /dev/null -w '%{http_code}\n' \
-  https://test.pypi.org/pypi/ellipticcurves/json
+  https://test.pypi.org/pypi/btclib-ecc/json
 # 404
 ```
 
@@ -390,14 +390,14 @@ than from `pyproject.toml`'s own copy of it:
 
 ```shell
 gh api repos/btclib-org/ellipticcurves --jq '.homepage'
-# https://ellipticcurves.readthedocs.io/
+# https://btclib-ecc.readthedocs.io/
 ```
 
-## Read the Docs, which is ellipticcurves.readthedocs.io
+## Read the Docs, which is btclib-ecc.readthedocs.io
 
 The project is to be imported on
 [readthedocs.org](https://app.readthedocs.org/) from
-`btclib-org/ellipticcurves` under the slug `ellipticcurves`, which is what
+`btclib-org/ellipticcurves` under the slug `btclib-ecc`, which is what
 `release.yml`'s `documented` job and `pyproject.toml`'s `documentation`
 url name, with an automation rule activating each new `v*` tag. It was
 not yet imported on 2026-09-26: importing it is the maintainer's, and
@@ -407,7 +407,7 @@ project's name: renaming the slug makes the old one stop answering
 rather than redirect. The project's public API answers without a token:
 
 ```shell
-p=https://app.readthedocs.org/api/v3/projects/ellipticcurves
+p=https://app.readthedocs.org/api/v3/projects/btclib-ecc
 curl -s "$p/" | jq -c '{default_branch, repository: .repository.url}'
 # {"default_branch":null,"repository":null}
 curl -s "$p/versions/?active=true" \
@@ -428,7 +428,7 @@ is what tells an absent project from one with nothing active:
 
 ```shell
 curl -s -o /dev/null -w '%{http_code}\n' \
-  https://app.readthedocs.org/api/v3/projects/ellipticcurves/
+  https://app.readthedocs.org/api/v3/projects/btclib-ecc/
 # 404
 ```
 

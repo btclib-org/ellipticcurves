@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.hashes` module."""
+"""Tests for the `btclib_ecc.hashes` module."""
 
 import hashlib
 from hashlib import sha256
@@ -10,8 +10,8 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves.exceptions import EllipticCurvesTypeError
-from ellipticcurves.hashes import _assert_valid_hf
+from btclib_ecc.exceptions import BTClibEccTypeError
+from btclib_ecc.hashes import _assert_valid_hf
 
 
 @pytest.mark.parametrize(
@@ -22,13 +22,13 @@ from ellipticcurves.hashes import _assert_valid_hf
 def test_a_hash_function_that_is_not_one_is_refused(hf: Any) -> None:
     """`sha256()` where `sha256` belongs is the caller error this names.
 
-    An EllipticCurvesTypeError and not an EllipticCurvesValueError, which is
+    A BTClibEccTypeError and not a BTClibEccValueError, which is
     what the five boolean verifications rely on: theirs is an `except
-    (ValueError, EllipticCurvesRuntimeError)`, so a value error here would be
+    (ValueError, BTClibEccRuntimeError)`, so a value error here would be
     reported as a signature that does not verify rather than reaching the caller
     who made the mistake.
     """
-    with pytest.raises(EllipticCurvesTypeError, match="not a hash function"):
+    with pytest.raises(BTClibEccTypeError, match="not a hash function"):
         _assert_valid_hf(hf)
 
 

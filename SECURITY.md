@@ -74,11 +74,11 @@ package is used to teach and to prototype as much as to build:
     would put `musig_nonce_gen`'s secnonce -- an opaque 132-byte struct
     the header calls "implementation defined and not guaranteed to be
     portable between different platforms or versions" -- into
-    `ellipticcurves.ecc.musig2`'s public API. What it would buy is
+    `btclib_ecc.ecc.musig2`'s public API. What it would buy is
     measured rather than assumed: the point-multiplication side is
     regular (btclib-org/btclib#254), and `sign`'s own line,
     `s = (k_1_ + values.b * k_2_ + values.e * a * d) % secp256k1.n`
-    (`src/ellipticcurves/ecc/musig2.py:848`), spreads 1.016x over
+    (`src/btclib_ecc/ecc/musig2.py:848`), spreads 1.016x over
     uniform scalars in `[1, n-1]` -- the magnitude leak that remains
     shows only for scalars with zero high bits, keys already lost for
     other reasons. The gain left is narrower than that figure suggests:
@@ -103,14 +103,14 @@ package is used to teach and to prototype as much as to build:
     This package passes none, and that is a decision, not an oversight.
     `commit_nonce.commit_nonce_` reads one straight into a Python `int`
     at `int.from_bytes(tweaked, byteorder="big", signed=False)`
-    (`src/ellipticcurves/ecc/commit_nonce.py:159`). A caller-owned buffer
+    (`src/btclib_ecc/ecc/commit_nonce.py:157`). A caller-owned buffer
     can be wiped once the call that filled it returns; the `int` it is
     read into cannot be, and outlives the call regardless, so taking the
     buffer there would cost a public signature and buy nothing, short of
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/ellipticcurves/ecc/dsa.py:1445`) crosses the same boundary the
+    (`src/btclib_ecc/ecc/dsa.py:1437`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -118,16 +118,16 @@ package is used to teach and to prototype as much as to build:
     -- one call rather than the buffer's whole lifetime, which is the
     trade this class exists to make
 - the boundary is not always there, and an install decides whether it
-    is. `pip install "ellipticcurves[secp256k1]"` installs the bindings,
+    is. `pip install "btclib-ecc[secp256k1]"` installs the bindings,
     and everything the next bullet says describes that installation.
-    `pip install ellipticcurves` installs no C at all: signing,
+    `pip install btclib-ecc` installs no C at all: signing,
     verification and key agreement all run the Python arithmetic the
     last bullet describes, which is tens of times slower and not
     constant-time. Nothing raises to say so, and
     `curves.is_libsecp256k1_serving()` is how a caller asks which of the
     two it has. The dispatch is a runtime switch besides:
     `curves.set_libsecp256k1_serving(serving=False)` turns it off for the
-    whole process, and `ELLIPTICCURVES_NO_LIBSECP256K1` set in the
+    whole process, and `BTCLIB_ECC_NO_LIBSECP256K1` set in the
     environment makes that the state from the first call -- a test
     framework built on this package wants exactly that, having to check
     libsecp256k1 with something other than libsecp256k1. With the
@@ -137,7 +137,7 @@ package is used to teach and to prototype as much as to build:
     whether it can: `curve._libsecp256k1_serves` asks for the switch
     above, then for secp256k1 as the curve, then for a hash function
     that is sha256 or absent -- `hf is None or hf is sha256`
-    (`src/ellipticcurves/curves/curve.py:535`) -- with whatever further
+    (`src/btclib_ecc/curves/curve.py:535`) -- with whatever further
     conditions the call site ands onto it. The hash function is matched
     by identity rather than by what it computes, so
     `functools.partial(sha256)`, or any other wrapper a caller writes to
@@ -169,7 +169,7 @@ package is used to teach and to prototype as much as to build:
     `musig_nonce_process` takes a fixed 32-byte `msg32` with no length
     parameter, so a message of any other size runs the Python equation
     below regardless of the bindings, as does a session carrying the
-    adaptor extension `ellipticcurves.ecc.musig2` implements and the
+    adaptor extension `btclib_ecc.ecc.musig2` implements and the
     bindings do not. `key_agg`, `key_sort` and `nonce_agg` stay Python's
     alone either way: measured too close to the delegated arithmetic they
     already call, or run once per session rather than once per signer,
@@ -251,11 +251,11 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/ellipticcurves/curves/curve.py:799`). `dh.diffie_hellman` at
+    (`src/btclib_ecc/curves/curve.py:799`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
-    (`src/ellipticcurves/ecc/dh.py:93`) and `sec_point._mult_sec` at
+    (`src/btclib_ecc/ecc/dh.py:93`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
-    (`src/ellipticcurves/curves/sec_point.py:361`), under
+    (`src/btclib_ecc/curves/sec_point.py:361`), under
     `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call
     on the octets they already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
@@ -269,10 +269,10 @@ package is used to teach and to prototype as much as to build:
     scalars are secrets, is a `mult` of each and their sum instead --
     `pedersen._commit` at
     `return _add(mult(r, ec.G, ec), mult(v, gen, ec), ec)`
-    (`src/ellipticcurves/ecc/pedersen.py:357`), under `pedersen.commit`,
+    (`src/btclib_ecc/ecc/pedersen.py:357`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ellipticcurves/curves/curve.py:1245`):
+    (`src/btclib_ecc/curves/curve.py:1245`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
@@ -294,7 +294,7 @@ package is used to teach and to prototype as much as to build:
     twice over one message is safe only because the committed value
     reaches the nonce derivation: that is what keeps two such signatures
     from sharing an untweaked nonce and handing out the key. The
-    derivation is `ellipticcurves.ecc.commit_nonce`, and the property is
+    derivation is `btclib_ecc.ecc.commit_nonce`, and the property is
     worth knowing about for anyone building on it the anti-exfil
     protocol, which `dsa` and `ssa` carry as `anti_exfil_*`: there, the
     ordering matters as well -- the signer must publish its `R` before
@@ -303,7 +303,7 @@ package is used to teach and to prototype as much as to build:
     module: the auxiliary randomness of BIP340 signing and the private
     keys of the key generation helpers. Nothing here seeds a generator
     of its own
-- `ellipticcurves.ecc.ecies` ships no block cipher and takes AES-128-CBC
+- `btclib_ecc.ecc.ecies` ships no block cipher and takes AES-128-CBC
     as two callables, so the cipher's own resistance to timing and
     side-channel attack is whatever the caller passed in -- this package
     neither provides it nor can check it. That is the point of the

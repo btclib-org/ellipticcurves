@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.ellswift` module.
+"""Tests for the `btclib_ecc.ecc.ellswift` module.
 
 The two BIP324 vector files pin the map itself, which is deterministic.
 `create` and `encode` are not -- one of up to eight preimages is picked
@@ -17,13 +17,13 @@ from typing import Any
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import ellswift as libsecp256k1_ellswift
-from ellipticcurves.curves import mult, secp256k1
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.curves.sec_point import bytes_from_point
-from ellipticcurves.ecc import ellswift
-from ellipticcurves.ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
-from ellipticcurves.exceptions import EllipticCurvesValueError
+from btclib_ecc._libsecp256k1 import ellswift as libsecp256k1_ellswift
+from btclib_ecc.curves import mult, secp256k1
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.curves.sec_point import bytes_from_point
+from btclib_ecc.ecc import ellswift
+from btclib_ecc.ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
+from btclib_ecc.exceptions import BTClibEccValueError
 from tests import load_csv, needs_bindings, vector_id
 
 # the other Koblitz curves of the catalogue: a == 0 and a square
@@ -192,11 +192,11 @@ def test_a_curve_the_map_is_not_defined_on() -> None:
     ell = bytes(2 * ec.p_size)
 
     err_msg = "the ElligatorSwift map wants a curve with a == 0"
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ellswift.create_var(q, ec)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ellswift.encode_var(mult(q, ec.G, ec), ec)
-    with pytest.raises(EllipticCurvesValueError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         ellswift.decode_var(ell, ec)
 
 
@@ -205,16 +205,14 @@ def test_wrong_size_encoding() -> None:
     ell = ellswift.create_var(secrets.randbelow(secp256k1.n - 1) + 1)
 
     for bad in (ell[:-1], ell + b"\x00", b""):
-        with pytest.raises(
-            EllipticCurvesValueError, match="invalid ElligatorSwift size"
-        ):
+        with pytest.raises(BTClibEccValueError, match="invalid ElligatorSwift size"):
             ellswift.decode_var(bad)
 
 
 def test_invalid_private_key() -> None:
     """A key outside 1..n-1 is refused, and by `scalar_from_prv_key`."""
     for prv_key in (0, secp256k1.n):
-        with pytest.raises(EllipticCurvesValueError):
+        with pytest.raises(BTClibEccValueError):
             ellswift.create_var(prv_key)
 
 

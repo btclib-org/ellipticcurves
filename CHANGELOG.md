@@ -36,3 +36,8 @@ vectors they answer to (issue btclib-org/btclib#2282).
 Each read-back carries what it answered on 2026-09-26; classic
 protection's also reads its force-push and deletion switches, and the
 environments' their required reviewers (issue btclib-org/btclib#2282).
+
+### The distribution is `btclib-ecc`, imported as `btclib_ecc`
+
+Its exceptions are `BTClibEcc*` and its switch `BTCLIB_ECC_NO_LIBSECP256K1`;
+the documentation is `btclib-ecc.readthedocs.io` (issue btclib-org/btclib#2282).

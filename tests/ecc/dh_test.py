@@ -2,21 +2,21 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ellipticcurves.ecc.dh` module."""
+"""Tests for the `btclib_ecc.ecc.dh` module."""
 
 from hashlib import sha1, sha256
 
 import pytest
 
-from ellipticcurves._libsecp256k1 import shared_point as libsecp256k1_shared_point
-from ellipticcurves.curves import bytes_from_point, curve, mult
-from ellipticcurves.curves.curve import CURVES
-from ellipticcurves.ecc import dh, diffie_hellman, dsa
-from ellipticcurves.exceptions import (
-    EllipticCurvesRuntimeError,
-    EllipticCurvesValueError,
+from btclib_ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
+from btclib_ecc.curves import bytes_from_point, curve, mult
+from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.ecc import dh, diffie_hellman, dsa
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccValueError,
 )
-from ellipticcurves.kdf import ansi_x9_63_kdf
+from btclib_ecc.kdf import ansi_x9_63_kdf
 from tests import needs_bindings
 
 
@@ -56,9 +56,7 @@ def test_ecdh() -> None:
 
     max_size = hf_size * (2**32 - 1)
     size = max_size + 1
-    with pytest.raises(
-        EllipticCurvesValueError, match="cannot derive a key larger than "
-    ):
+    with pytest.raises(BTClibEccValueError, match="cannot derive a key larger than "):
         ansi_x9_63_kdf(z, size, hf, None)
 
 
@@ -185,7 +183,7 @@ def test_a_normal_dU_reaches_the_bindings(monkeypatch: pytest.MonkeyPatch) -> No
         calls.append(prvkey)
         return libsecp256k1_shared_point(pubkey_bytes, prvkey)
 
-    monkeypatch.setattr("ellipticcurves.ecc.dh.libsecp256k1_shared_point", record)
+    monkeypatch.setattr("btclib_ecc.ecc.dh.libsecp256k1_shared_point", record)
 
     a, _A = dsa.gen_keys()  # Alice
     _b, B = dsa.gen_keys()  # Bob
@@ -197,5 +195,5 @@ def test_infinity_shared_secret() -> None:
     """A degenerate scalar, zero mod n, maps every public key to INF."""
     ec = CURVES["secp256k1"]
     err_msg = r"invalid \(INF\) key"
-    with pytest.raises(EllipticCurvesRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         diffie_hellman(0, ec.G, 32)

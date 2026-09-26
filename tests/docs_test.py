@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 _ROOT = Path(__file__).parents[1]
-_PACKAGE_DIR = _ROOT / "src" / "ellipticcurves"
+_PACKAGE_DIR = _ROOT / "src" / "btclib_ecc"
 _DOCS_DIR = _ROOT / "docs" / "source"
 # what a documented module looks like to sphinx: ".. automodule:: name",
 # whatever indentation and options follow it
@@ -55,9 +55,7 @@ def _is_public(parts: tuple[str, ...]) -> bool:
 
 def _dotted(parts: tuple[str, ...]) -> str:
     """Return the dotted name of a module path, a package by its own name."""
-    return ".".join(
-        ("ellipticcurves", *parts[: -1 if parts[-1] == "__init__" else None])
-    )
+    return ".".join(("btclib_ecc", *parts[: -1 if parts[-1] == "__init__" else None]))
 
 
 def _shipped() -> set[str]:
@@ -97,8 +95,8 @@ def test_the_docs_sources_were_found_at_all() -> None:
     A wrong `_DOCS_DIR` would make `_documented()` empty, which the second
     of them reports as success.
     """
-    assert (_DOCS_DIR / "ellipticcurves.rst").is_file()
-    assert "ellipticcurves" in _documented()
+    assert (_DOCS_DIR / "btclib_ecc.rst").is_file()
+    assert "btclib_ecc" in _documented()
 
 
 def test_a_toctree_line_is_not_a_stanza() -> None:
@@ -107,24 +105,24 @@ def test_a_toctree_line_is_not_a_stanza() -> None:
         ".. toctree::\n"
         "   :maxdepth: 4\n"
         "\n"
-        "   ellipticcurves.curves\n"
+        "   btclib_ecc.curves\n"
         "\n"
-        ".. automodule:: ellipticcurves.curves.curve\n"
+        ".. automodule:: btclib_ecc.curves.curve\n"
         "   :members:\n"
     )
-    assert _documented_in(source) == {"ellipticcurves.curves.curve"}
+    assert _documented_in(source) == {"btclib_ecc.curves.curve"}
 
 
 @pytest.mark.parametrize(
     "parts, public, dotted",
     [
-        (("kdf",), True, "ellipticcurves.kdf"),
-        (("curves", "curve"), True, "ellipticcurves.curves.curve"),
-        (("__init__",), True, "ellipticcurves"),
-        (("curves", "__init__"), True, "ellipticcurves.curves"),
-        (("_internal",), False, "ellipticcurves._internal"),
-        (("curves", "_helpers"), False, "ellipticcurves.curves._helpers"),
-        (("_internal", "kdf"), False, "ellipticcurves._internal.kdf"),
+        (("kdf",), True, "btclib_ecc.kdf"),
+        (("curves", "curve"), True, "btclib_ecc.curves.curve"),
+        (("__init__",), True, "btclib_ecc"),
+        (("curves", "__init__"), True, "btclib_ecc.curves"),
+        (("_internal",), False, "btclib_ecc._internal"),
+        (("curves", "_helpers"), False, "btclib_ecc.curves._helpers"),
+        (("_internal", "kdf"), False, "btclib_ecc._internal.kdf"),
     ],
 )
 def test_is_public_and_dotted(

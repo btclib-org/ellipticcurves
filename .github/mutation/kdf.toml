@@ -15,8 +15,8 @@
 
 [cosmic-ray]
 module-path = [
-    "src/ellipticcurves/ecc/dh.py",
-    "src/ellipticcurves/kdf.py",
+    "src/btclib_ecc/ecc/dh.py",
+    "src/btclib_ecc/kdf.py",
 ]
 
 test-command = """python -m pytest -x -q -n0 -p no:randomly \
@@ -35,7 +35,7 @@ excluded-modules = []
 # every `|` in the two modules is in an annotation, whose mutants are
 # equivalent under deferred annotation evaluation (PEP 649):
 #
-#   grep -n ' | ' src/ellipticcurves/ecc/dh.py src/ellipticcurves/kdf.py
+#   grep -n ' | ' src/btclib_ecc/ecc/dh.py src/btclib_ecc/kdf.py
 [cosmic-ray.filters.operators-filter]
 exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
 

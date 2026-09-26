@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""The ellipticcurves test suite, and the code its modules share.
+"""The btclib_ecc test suite, and the code its modules share.
 
 The vector files are the BIPs', Wycheproof's and a few other projects':
 read them here and hand them to `pytest.mark.parametrize`, so that a
@@ -36,13 +36,13 @@ from typing import Any, NamedTuple
 
 import pytest
 
-import ellipticcurves
+import btclib_ecc
 
 _TESTS_DIR = Path(__file__).parent
 
 
 def module_names() -> list[str]:
-    """Return every module of the installed ellipticcurves, the root included.
+    """Return every module of the installed btclib_ecc, the root included.
 
     Here rather than at each site that walks the package, for the reason
     `public_classes_with` below gives. What the walk covers -- a second
@@ -51,12 +51,10 @@ def module_names() -> list[str]:
     nowhere: each site asserts against whatever its own walk found.
     """
     return [
-        "ellipticcurves",
+        "btclib_ecc",
         *(
             module.name
-            for module in pkgutil.walk_packages(
-                ellipticcurves.__path__, "ellipticcurves."
-            )
+            for module in pkgutil.walk_packages(btclib_ecc.__path__, "btclib_ecc.")
         ),
     ]
 
@@ -83,7 +81,7 @@ def public_classes_with(method_name: str) -> set[str]:
         for obj in vars(module).values():
             if not isinstance(obj, type):
                 continue
-            if not getattr(obj, "__module__", "").startswith("ellipticcurves"):
+            if not getattr(obj, "__module__", "").startswith("btclib_ecc"):
                 continue
             if obj.__qualname__.startswith("_"):
                 continue
@@ -191,12 +189,12 @@ class KeyPairSpellings(NamedTuple):
 def key_pair_spellings() -> KeyPairSpellings:
     """Build one `KeyPairSpellings`, computed on call rather than at import.
 
-    `ellipticcurves.curves` is imported inside this function rather than
+    `btclib_ecc.curves` is imported inside this function rather than
     at the top of the module, for the reason the block comment above
     gives: a top-level import would run at collection, the same moment
     `Q = mult(q)` would.
     """
-    from ellipticcurves.curves import mult  # noqa: PLC0415
+    from btclib_ecc.curves import mult  # noqa: PLC0415
 
     q = 12
     q_bytes = q.to_bytes(32, byteorder="big", signed=False)
@@ -343,7 +341,7 @@ needs_bindings = pytest.mark.bindings
 # subclass of `ImportError`, so one `except` covers both without a
 # tuple.
 #
-# Here rather than beside `INSTALLED` in `src/ellipticcurves/_libsecp256k1.py`:
+# Here rather than beside `INSTALLED` in `src/btclib_ecc/_libsecp256k1.py`:
 # that module answers what the package's own run-time asks of libsecp256k1, and
 # nothing in the package delegates to secp256k1-zkp -- issue
 # btclib-org/btclib#1679 asks only for the comparison this suite makes to be

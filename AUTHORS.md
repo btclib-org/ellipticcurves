@@ -1,6 +1,6 @@
 # Authors
 
-To see the list of ellipticcurves authors for copyright purposes, see the
+To see the list of btclib-ecc authors for copyright purposes, see the
 revision history in source control:
 <https://github.com/btclib-org/ellipticcurves/graphs/contributors>
 
